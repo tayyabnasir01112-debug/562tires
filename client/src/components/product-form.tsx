@@ -183,11 +183,18 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {categories.map((cat) => (
+                  <SelectItem value="">No category</SelectItem>
+                  {categories.length === 0 ? (
+                    <SelectItem value="__no_categories" disabled>
+                      No categories yet — add them in Settings.
+                    </SelectItem>
+                  ) : (
+                    categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id.toString()}>
                         {cat.name}
                       </SelectItem>
-                    ))}
+                    ))
+                  )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
