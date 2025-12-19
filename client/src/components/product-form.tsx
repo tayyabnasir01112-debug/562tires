@@ -76,9 +76,14 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
 
   const mutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
+      const categoryId =
+        data.categoryId && data.categoryId !== "none"
+          ? parseInt(data.categoryId)
+          : null;
+
       const payload = {
         ...data,
-        categoryId: data.categoryId ? parseInt(data.categoryId) : null,
+        categoryId,
       };
       
       if (isEditing) {
@@ -183,18 +188,17 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                  <SelectItem value="">No category</SelectItem>
-                  {categories.length === 0 ? (
+                  <SelectItem value="none">No category</SelectItem>
+                  {categories.length === 0 && (
                     <SelectItem value="__no_categories" disabled>
                       No categories yet — add them in Settings.
                     </SelectItem>
-                  ) : (
-                    categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id.toString()}>
-                        {cat.name}
-                      </SelectItem>
-                    ))
                   )}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
