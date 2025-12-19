@@ -1,5 +1,4 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import * as XLSX from "xlsx";
@@ -10,10 +9,7 @@ import { z } from "zod";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
@@ -667,5 +663,5 @@ export async function registerRoutes(
     }
   });
 
-  return httpServer;
+  return;
 }
