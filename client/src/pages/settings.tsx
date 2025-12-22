@@ -156,9 +156,12 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 bg-muted rounded-lg">
-              <p className="font-medium">562 Tyres</p>
-              <p className="text-sm text-muted-foreground">Los Angeles, CA</p>
-              <p className="text-sm text-muted-foreground">Phone: (555) 562-TIRE</p>
+                <p className="font-medium">562 Tires</p>
+                <p className="text-sm text-muted-foreground">13441 Imperial Hwy, Whittier, CA 90605</p>
+                <p className="text-sm text-muted-foreground">Phone: (562) 469-1064</p>
+                <p className="text-xs text-muted-foreground">
+                  Mon-Fri 8am-7pm • Sat 8am-5pm • Sun 8am-3pm
+                </p>
             </div>
             <p className="text-xs text-muted-foreground">
               Contact support to update store information

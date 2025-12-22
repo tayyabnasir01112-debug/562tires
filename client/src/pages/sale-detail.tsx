@@ -143,13 +143,19 @@ export default function SaleDetail() {
         <CardContent className="p-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <div className="w-12 h-12 rounded-md bg-primary flex items-center justify-center">
                 <Circle className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">562 Tyres</h2>
-                <p className="text-sm text-muted-foreground">Los Angeles, CA</p>
+                <h2 className="text-xl font-semibold">562 Tires</h2>
+                <p className="text-sm text-muted-foreground">
+                  13441 Imperial Hwy, Whittier, CA 90605
+                </p>
+                <p className="text-sm text-muted-foreground">Phone: (562) 469-1064</p>
+                <p className="text-xs text-muted-foreground">
+                  Mon-Fri 8am-7pm • Sat 8am-5pm • Sun 8am-3pm
+                </p>
               </div>
             </div>
             <div className="text-right">
@@ -254,6 +260,12 @@ export default function SaleDetail() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-mono">${parseFloat(sale.subtotal).toFixed(2)}</span>
               </div>
+              {parseFloat(sale.laborCost || "0") > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Labor</span>
+                  <span className="font-mono">${parseFloat(sale.laborCost || "0").toFixed(2)}</span>
+                </div>
+              )}
               {parseFloat(sale.discount || "0") > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>

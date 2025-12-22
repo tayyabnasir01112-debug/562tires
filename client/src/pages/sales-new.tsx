@@ -76,6 +76,7 @@ const saleFormSchema = z.object({
   paymentMethod: z.enum(["cash", "card", "check"]),
   notes: z.string().optional(),
   discount: z.string().optional(),
+  laborCost: z.string().optional(),
   items: z.array(z.object({
     productId: z.number(),
     productName: z.string(),
@@ -122,6 +123,7 @@ export default function NewSale() {
       paymentMethod: "card",
       notes: "",
       discount: "0",
+    laborCost: "0",
       items: [],
     },
   });
@@ -133,6 +135,7 @@ export default function NewSale() {
 
   const watchedItems = form.watch("items");
   const watchedDiscount = form.watch("discount");
+const watchedLabor = form.watch("laborCost");
 
   // Calculate totals
   const subtotal = watchedItems.reduce((sum, item) => {
@@ -144,9 +147,10 @@ export default function NewSale() {
   }, 0);
 
   const discount = parseFloat(watchedDiscount || "0");
-  const taxableAmount = subtotal - discount;
+const laborCost = parseFloat(watchedLabor || "0");
+const taxableAmount = subtotal + laborCost - discount;
   const globalTaxAmount = taxableAmount * (globalTaxRate / 100);
-  const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
+const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
 
   const createSaleMutation = useMutation({
     mutationFn: async (data: SaleFormData) => {
@@ -157,6 +161,7 @@ export default function NewSale() {
         globalTaxAmount: globalTaxAmount.toFixed(2),
         perItemTaxTotal: perItemTaxTotal.toFixed(2),
         discount: discount.toFixed(2),
+        laborCost: laborCost.toFixed(2),
         grandTotal: grandTotal.toFixed(2),
       };
       return apiRequest("POST", "/api/sales", payload);
@@ -199,13 +204,17 @@ export default function NewSale() {
         });
       }
     } else {
+      const inferredPerItemTax =
+        product.perItemTax ||
+        ((product.name || "").toLowerCase().includes("tire") ? "1.75" : "0");
+
       append({
         productId: product.id,
         productName: product.name,
         productSku: product.sku,
         quantity: 1,
         unitPrice: product.sellingPrice,
-        perItemTax: product.perItemTax || "0",
+        perItemTax: inferredPerItemTax,
         maxQuantity: product.quantity,
       });
     }
@@ -629,6 +638,31 @@ export default function NewSale() {
                                 {...field}
                                 className="pl-7 font-mono"
                                 data-testid="input-discount"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="laborCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Labor Cost</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                                className="pl-7 font-mono"
+                                data-testid="input-labor-cost"
                               />
                             </div>
                           </FormControl>

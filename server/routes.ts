@@ -9,6 +9,22 @@ import { z } from "zod";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+const DEFAULT_TIRE_FEE = 1.75;
+
+function detectPerItemTax(product: any, category?: any) {
+  const explicit = product?.perItemTax ? parseFloat(product.perItemTax) : 0;
+  if (explicit > 0) return explicit;
+
+  const catName = category?.name?.toLowerCase?.() || "";
+  const isTireCategory = catName.includes("tire");
+  const isTireName = (product?.name || "").toLowerCase().includes("tire");
+
+  if (isTireCategory || isTireName) {
+    return DEFAULT_TIRE_FEE;
+  }
+  return 0;
+}
+
 export async function registerRoutes(app: Express): Promise<void> {
   
   // Dashboard stats
@@ -322,20 +338,38 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       }
 
-      const saleItems = items.map((item: any) => ({
-        productId: item.productId,
-        productName: item.productName,
-        productSku: item.productSku,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        perItemTax: item.perItemTax || "0",
-        lineTotal: (parseFloat(item.unitPrice) * item.quantity).toFixed(2),
-      }));
+      const saleItems = [];
+      let perItemTaxTotal = 0;
+
+      for (const item of items) {
+        const product = await storage.getProduct(item.productId);
+        const category = product?.categoryId ? await storage.getCategory(product.categoryId) : undefined;
+        const perItemTax = item.perItemTax && item.perItemTax !== ""
+          ? parseFloat(item.perItemTax)
+          : detectPerItemTax(product, category);
+        const lineTotal = parseFloat(item.unitPrice) * item.quantity;
+        const lineTaxTotal = perItemTax * item.quantity;
+        perItemTaxTotal += lineTaxTotal;
+
+        saleItems.push({
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          perItemTax: perItemTax.toFixed(2),
+          lineTotal: lineTotal.toFixed(2),
+        });
+      }
+
+      const laborCost = parseFloat(saleData.laborCost || "0");
 
       const sale = await storage.createSale({
         ...saleData,
         paymentStatus: "paid",
         saleDate: new Date(),
+        laborCost: laborCost.toFixed(2),
+        perItemTaxTotal: perItemTaxTotal.toFixed(2),
       }, saleItems);
 
       res.status(201).json(sale);
@@ -361,11 +395,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Header
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("562 Tyres", 20, 25);
+      doc.text("562 Tires", 20, 25);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text("Los Angeles, CA", 20, 32);
-      doc.text("Phone: (555) 562-TIRE", 20, 38);
+      doc.text("13441 Imperial Hwy, Whittier, CA 90605", 20, 32);
+      doc.text("Phone: (562) 469-1064", 20, 38);
+      doc.text("Mon-Fri 8am-7pm • Sat 8am-5pm • Sun 8am-3pm", 20, 44);
 
       // Invoice number and date
       doc.setFontSize(12);
@@ -378,23 +413,23 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       // Customer info
       doc.setDrawColor(200);
-      doc.line(20, 48, pageWidth - 20, 48);
+      doc.line(20, 50, pageWidth - 20, 50);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
-      doc.text("Bill To:", 20, 58);
+      doc.text("Bill To:", 20, 60);
       doc.setFont("helvetica", "normal");
-      doc.text(sale.customerName, 20, 65);
-      if (sale.customerPhone) doc.text(sale.customerPhone, 20, 71);
-      if (sale.customerAddress) doc.text(sale.customerAddress, 20, 77);
+      doc.text(sale.customerName, 20, 67);
+      if (sale.customerPhone) doc.text(sale.customerPhone, 20, 73);
+      if (sale.customerAddress) doc.text(sale.customerAddress, 20, 79);
 
       // Vehicle info
       if (sale.vehicleMake || sale.vehicleModel) {
         doc.setFont("helvetica", "bold");
-        doc.text("Vehicle:", pageWidth / 2, 58);
+        doc.text("Vehicle:", pageWidth / 2, 60);
         doc.setFont("helvetica", "normal");
-        doc.text(`${sale.vehicleYear || ""} ${sale.vehicleMake || ""} ${sale.vehicleModel || ""}`.trim(), pageWidth / 2, 65);
-        if (sale.licensePlate) doc.text(`Plate: ${sale.licensePlate}`, pageWidth / 2, 71);
-        if (sale.mileage) doc.text(`Mileage: ${sale.mileage}`, pageWidth / 2, 77);
+        doc.text(`${sale.vehicleYear || ""} ${sale.vehicleMake || ""} ${sale.vehicleModel || ""}`.trim(), pageWidth / 2, 67);
+        if (sale.licensePlate) doc.text(`Plate: ${sale.licensePlate}`, pageWidth / 2, 73);
+        if (sale.mileage) doc.text(`Mileage: ${sale.mileage}`, pageWidth / 2, 79);
       }
 
       // Items table
@@ -432,42 +467,66 @@ export async function registerRoutes(app: Express): Promise<void> {
       doc.text("Subtotal:", totalsX, finalY);
       doc.text(`$${parseFloat(sale.subtotal).toFixed(2)}`, pageWidth - 20, finalY, { align: "right" });
 
+      if (parseFloat(sale.laborCost || "0") > 0) {
+        doc.text("Labor:", totalsX, finalY + 6);
+        doc.text(`$${parseFloat(sale.laborCost || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
+      }
+
       if (parseFloat(sale.discount || "0") > 0) {
-        doc.text("Discount:", totalsX, finalY + 6);
-        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
+        doc.text("Discount:", totalsX, finalY + 12);
+        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + 12, { align: "right" });
       }
 
-      doc.text(`Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`, totalsX, finalY + 12);
-      doc.text(`$${parseFloat(sale.globalTaxAmount).toFixed(2)}`, pageWidth - 20, finalY + 12, { align: "right" });
+      const discountOffset = parseFloat(sale.discount || "0") > 0 ? 6 : 0;
+      const laborOffset = parseFloat(sale.laborCost || "0") > 0 ? 6 : 0;
 
+      doc.text(
+        `Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`,
+        totalsX,
+        finalY + 12 + laborOffset + discountOffset,
+      );
+      doc.text(
+        `$${parseFloat(sale.globalTaxAmount).toFixed(2)}`,
+        pageWidth - 20,
+        finalY + 12 + laborOffset + discountOffset,
+        { align: "right" },
+      );
+
+      const perItemOffset = parseFloat(sale.perItemTaxTotal || "0") > 0 ? 6 : 0;
       if (parseFloat(sale.perItemTaxTotal || "0") > 0) {
-        doc.text("Per-Item Taxes:", totalsX, finalY + 18);
-        doc.text(`$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`, pageWidth - 20, finalY + 18, { align: "right" });
+        doc.text("Per-Item Taxes:", totalsX, finalY + 18 + laborOffset + discountOffset);
+        doc.text(
+          `$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`,
+          pageWidth - 20,
+          finalY + 18 + laborOffset + discountOffset,
+          { align: "right" },
+        );
       }
 
+      const baseOffset = 22 + laborOffset + discountOffset + perItemOffset;
       doc.setDrawColor(100);
-      doc.line(totalsX, finalY + 22, pageWidth - 20, finalY + 22);
+      doc.line(totalsX, finalY + baseOffset, pageWidth - 20, finalY + baseOffset);
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("Total:", totalsX, finalY + 30);
-      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + 30, { align: "right" });
+      doc.text("Total:", totalsX, finalY + baseOffset + 8);
+      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + baseOffset + 8, { align: "right" });
 
       // Payment method
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + 30);
+      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + baseOffset + 8);
 
       // Notes
       if (sale.notes) {
-        doc.text("Notes:", 20, finalY + 42);
-        doc.text(sale.notes, 20, finalY + 48);
+        doc.text("Notes:", 20, finalY + baseOffset + 20);
+        doc.text(sale.notes, 20, finalY + baseOffset + 26);
       }
 
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(128);
-      doc.text("Thank you for choosing 562 Tyres!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
+      doc.text("Thank you for choosing 562 Tires!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
 
       const pdfBuffer = doc.output("arraybuffer");
       res.setHeader("Content-Type", "application/pdf");

@@ -2,6 +2,12 @@
 
 This app is deployed at `https://neon-speculoos-4ec750.netlify.app`. Keep the browser tab open while working with inventory and sales.
 
+Store info shown on invoices:
+- 562 Tires
+- 13441 Imperial Hwy, Whittier, CA 90605
+- Phone: (562) 469-1064
+- Mon-Fri 8am-7pm • Sat 8am-5pm • Sun 8am-3pm
+
 ## 1) Initial setup
 - Environment: `DATABASE_URL` is already set in Netlify (Neon).
 - No auth yet: anyone with the URL can access. Keep the link private or add auth later.
@@ -22,8 +28,9 @@ This app is deployed at `https://neon-speculoos-4ec750.netlify.app`. Keep the br
 ## 4) Recording a sale
 - **Sales → New Sale**.
 - Customer/Vehicle: name, phone, vehicle make/model/year, plate, mileage.
-- Items: select product, set quantity, unit price, and per-item tax (for $1.73/tire, enter 1.73).
+- Items: select product, set quantity, unit price, and per-item tax (for $1.73/tire, enter 1.73). If a tire has no per-item tax set, the system will add the California tire fee of $1.75/tire automatically.
 - Global tax: set in Settings (defaults to 9.5%); applied to subtotal.
+- Labor: optional labor cost line that is included in totals.
 - Discount: optional.
 - Saving a sale:
   - Deducts quantities from inventory.
@@ -59,4 +66,5 @@ This app is deployed at `https://neon-speculoos-4ec750.netlify.app`. Keep the br
 - Add auth (e.g., Netlify Identity or simple password gate).
 - Add scheduled exports to cloud storage.
 - Add role-based access (cashier vs admin) and audit logs.
+
 

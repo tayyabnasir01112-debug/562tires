@@ -72,6 +72,7 @@ export const sales = pgTable("sales", {
   perItemTaxTotal: decimal("per_item_tax_total", { precision: 10, scale: 2 }).notNull().default("0"),
   discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
   grandTotal: decimal("grand_total", { precision: 10, scale: 2 }).notNull(),
+  laborCost: decimal("labor_cost", { precision: 10, scale: 2 }).notNull().default("0"),
   // Payment
   paymentMethod: text("payment_method").notNull(), // cash, card, check
   paymentStatus: text("payment_status").notNull().default("paid"), // paid, pending
