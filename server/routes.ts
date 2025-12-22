@@ -10,6 +10,11 @@ import { z } from "zod";
 const upload = multer({ storage: multer.memoryStorage() });
 
 const DEFAULT_TIRE_FEE = 1.75;
+const DEFAULT_CATEGORIES = [
+  { name: "Tires", description: "All types of tires" },
+  { name: "Wheels", description: "Wheels and rims" },
+  { name: "Tire Parts", description: "Accessories and parts for tires" },
+];
 
 function detectPerItemTax(product: any, category?: any) {
   const explicit = product?.perItemTax ? parseFloat(product.perItemTax) : 0;
@@ -18,8 +23,9 @@ function detectPerItemTax(product: any, category?: any) {
   const catName = category?.name?.toLowerCase?.() || "";
   const isTireCategory = catName.includes("tire");
   const isTireName = (product?.name || "").toLowerCase().includes("tire");
+  const isConditionNew = (product?.condition || "new").toLowerCase() === "new";
 
-  if (isTireCategory || isTireName) {
+  if ((isTireCategory && isConditionNew) || isTireName) {
     return DEFAULT_TIRE_FEE;
   }
   return 0;
@@ -40,7 +46,13 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
-      const categories = await storage.getCategories();
+      let categories = await storage.getCategories();
+      if (categories.length === 0) {
+        for (const cat of DEFAULT_CATEGORIES) {
+          await storage.createCategory(cat);
+        }
+        categories = await storage.getCategories();
+      }
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch categories" });
@@ -400,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       doc.setFont("helvetica", "normal");
       doc.text("13441 Imperial Hwy, Whittier, CA 90605", 20, 32);
       doc.text("Phone: (562) 469-1064", 20, 38);
-      doc.text("Mon-Fri 8am-7pm • Sat 8am-5pm • Sun 8am-3pm", 20, 44);
+      doc.text("Mon-Fri 8am-7pm - Sat 8am-5pm - Sun 8am-3pm", 20, 44);
 
       // Invoice number and date
       doc.setFontSize(12);

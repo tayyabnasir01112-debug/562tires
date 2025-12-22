@@ -34,6 +34,7 @@ export const products = pgTable("products", {
   sellingPrice: decimal("selling_price", { precision: 10, scale: 2 }).notNull(),
   perItemTax: decimal("per_item_tax", { precision: 10, scale: 2 }).default("0"), // Fixed tax per item (e.g., $1.73/tire)
   location: text("location"), // Warehouse location
+  condition: text("condition").notNull().default("new"), // new, used, etc.
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -60,7 +60,7 @@ import {
   ShoppingCart,
   Receipt,
 } from "lucide-react";
-import type { Product } from "@shared/schema";
+import type { Product, Category } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 const saleFormSchema = z.object({
@@ -85,6 +85,8 @@ const saleFormSchema = z.object({
     unitPrice: z.string(),
     perItemTax: z.string(),
     maxQuantity: z.number(),
+    categoryId: z.number().optional(),
+    condition: z.string().optional(),
   })).min(1, "At least one item is required"),
 });
 
@@ -104,6 +106,10 @@ export default function NewSale() {
 
   const { data: settings } = useQuery<{ globalTaxRate: string }>({
     queryKey: ["/api/settings/tax"],
+  });
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
   });
 
   const globalTaxRate = parseFloat(settings?.globalTaxRate || String(GLOBAL_TAX_RATE));
@@ -186,6 +192,10 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
     },
   });
 
+  const tireCategoryIds = (categories || [])
+    .filter((c) => c.name.toLowerCase().includes("tire"))
+    .map((c) => c.id);
+
   const addProduct = (product: Product) => {
     // Check if product already in cart
     const existingIndex = fields.findIndex(
@@ -204,9 +214,14 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
         });
       }
     } else {
+      const isTireCategory =
+        product.categoryId !== null &&
+        product.categoryId !== undefined &&
+        tireCategoryIds.includes(product.categoryId);
+      const looksLikeTire = (product.name || "").toLowerCase().includes("tire");
       const inferredPerItemTax =
         product.perItemTax ||
-        ((product.name || "").toLowerCase().includes("tire") ? "1.75" : "0");
+        ((isTireCategory || looksLikeTire) && (product.condition || "new").toLowerCase() === "new" ? "1.75" : "0");
 
       append({
         productId: product.id,
@@ -216,6 +231,8 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
         unitPrice: product.sellingPrice,
         perItemTax: inferredPerItemTax,
         maxQuantity: product.quantity,
+        categoryId: product.categoryId || undefined,
+        condition: product.condition,
       });
     }
     setProductSearchOpen(false);

@@ -40,6 +40,7 @@ const productFormSchema = z.object({
   sellingPrice: z.string().min(1, "Selling price is required"),
   perItemTax: z.string().optional(),
   location: z.string().optional(),
+  condition: z.string().optional(),
   isActive: z.boolean(),
 });
 
@@ -70,6 +71,7 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
       sellingPrice: product?.sellingPrice || "",
       perItemTax: product?.perItemTax || "0",
       location: product?.location || "",
+    condition: product?.condition || "new",
       isActive: product?.isActive ?? true,
     },
   });
@@ -374,6 +376,28 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
                   data-testid="input-product-location"
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="condition"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Condition</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value || "new"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-product-condition">
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="used">Used</SelectItem>
+                  <SelectItem value="refurbished">Refurbished</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
