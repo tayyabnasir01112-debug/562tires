@@ -7,8 +7,6 @@ import autoTable from "jspdf-autotable";
 import { insertProductSchema, insertCategorySchema, saleFormSchema } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import fs from "fs";
-import path from "path";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -416,28 +414,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Header with optional logo
-      let logoHeight = 0;
-      try {
-        const logoPath = path.resolve(import.meta.dirname, "..", "attached_assets", "logo.jpg");
-        if (fs.existsSync(logoPath)) {
-          const logo = fs.readFileSync(logoPath).toString("base64");
-          doc.addImage(`data:image/jpg;base64,${logo}`, "JPG", 20, 15, 30, 30);
-          logoHeight = 30;
-        }
-      } catch {
-        // ignore logo load errors
-      }
-
-      const headerTop = logoHeight > 0 ? 20 : 25;
+      // Header
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("562 Tires", 60, headerTop);
+      doc.text("562 Tires", 20, 25);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text("13441 Imperial Hwy, Whittier, CA 90605", 60, headerTop + 7);
-      doc.text("Phone: (562) 469-1064", 60, headerTop + 13);
-      doc.text("Mon-Fri 8am-7pm - Sat 8am-5pm - Sun 8am-3pm", 60, headerTop + 19);
+      doc.text("13441 Imperial Hwy, Whittier, CA 90605", 20, 32);
+      doc.text("Phone: (562) 469-1064", 20, 38);
+      doc.text("Mon-Fri 8am-7pm - Sat 8am-5pm - Sun 8am-3pm", 20, 44);
 
       // Invoice number and date
       doc.setFontSize(12);
@@ -479,23 +464,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         `$${parseFloat(item.lineTotal).toFixed(2)}`,
       ]);
 
-      const tableWidth = pageWidth - 40;
       autoTable(doc, {
-        startY: 95,
+        startY: 90,
         head: [["Item", "SKU", "Qty", "Unit Price", "CA Tire Fee", "Total"]],
         body: tableData,
         theme: "striped",
-        headStyles: { fillColor: [230, 53, 42], textColor: 255, fontStyle: "bold" },
-        styles: { fontSize: 9, cellPadding: 3, valign: "middle" },
-        columnStyles: {
-          0: { cellWidth: 120 },
-          1: { cellWidth: 70 },
-          2: { cellWidth: 30, halign: "center" },
-          3: { cellWidth: 70, halign: "right" },
-          4: { cellWidth: 70, halign: "right" },
-          5: { cellWidth: 70, halign: "right" },
-        },
-        tableWidth,
+        headStyles: { fillColor: [51, 51, 51], textColor: 255, fontStyle: "bold" },
+        styles: { fontSize: 9 },
         margin: { left: 20, right: 20 },
       });
 
@@ -566,7 +541,6 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(128);
-      doc.setTextColor(80);
       doc.text("Thank you for choosing 562 Tires!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
 
       const pdfBuffer = doc.output("arraybuffer");
