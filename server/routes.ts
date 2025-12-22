@@ -7,6 +7,8 @@ import autoTable from "jspdf-autotable";
 import { insertProductSchema, insertCategorySchema, saleFormSchema } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import fs from "fs";
+import path from "path";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -414,15 +416,28 @@ export async function registerRoutes(app: Express): Promise<void> {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Header
+      // Header with optional logo
+      let logoHeight = 0;
+      try {
+        const logoPath = path.resolve(import.meta.dirname, "..", "attached_assets", "logo.jpg");
+        if (fs.existsSync(logoPath)) {
+          const logo = fs.readFileSync(logoPath).toString("base64");
+          doc.addImage(`data:image/jpg;base64,${logo}`, "JPG", 20, 15, 30, 30);
+          logoHeight = 30;
+        }
+      } catch {
+        // ignore logo load errors
+      }
+
+      const headerTop = logoHeight > 0 ? 20 : 25;
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("562 Tires", 20, 25);
+      doc.text("562 Tires", 60, headerTop);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text("13441 Imperial Hwy, Whittier, CA 90605", 20, 32);
-      doc.text("Phone: (562) 469-1064", 20, 38);
-      doc.text("Mon-Fri 8am-7pm - Sat 8am-5pm - Sun 8am-3pm", 20, 44);
+      doc.text("13441 Imperial Hwy, Whittier, CA 90605", 60, headerTop + 7);
+      doc.text("Phone: (562) 469-1064", 60, headerTop + 13);
+      doc.text("Mon-Fri 8am-7pm - Sat 8am-5pm - Sun 8am-3pm", 60, headerTop + 19);
 
       // Invoice number and date
       doc.setFontSize(12);
@@ -466,17 +481,17 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       autoTable(doc, {
         startY: 90,
-        head: [["Item", "SKU", "Qty", "Unit Price", "Item Tax", "Total"]],
+        head: [["Item", "SKU", "Qty", "Unit Price", "CA Tire Fee", "Total"]],
         body: tableData,
         theme: "striped",
-        headStyles: { fillColor: [51, 51, 51] },
+        headStyles: { fillColor: [230, 53, 42], textColor: 255, fontStyle: "bold" },
         styles: { fontSize: 9 },
         columnStyles: {
           0: { cellWidth: 60 },
           1: { cellWidth: 30 },
           2: { cellWidth: 15, halign: "center" },
           3: { cellWidth: 25, halign: "right" },
-          4: { cellWidth: 25, halign: "right" },
+          4: { cellWidth: 30, halign: "right" },
           5: { cellWidth: 25, halign: "right" },
         },
       });
@@ -516,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const perItemOffset = parseFloat(sale.perItemTaxTotal || "0") > 0 ? 6 : 0;
       if (parseFloat(sale.perItemTaxTotal || "0") > 0) {
-        doc.text("Per-Item Taxes:", totalsX, finalY + 18 + laborOffset + discountOffset);
+        doc.text("California Tire Fee:", totalsX, finalY + 18 + laborOffset + discountOffset);
         doc.text(
           `$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`,
           pageWidth - 20,
