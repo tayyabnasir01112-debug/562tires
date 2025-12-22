@@ -487,13 +487,15 @@ export async function registerRoutes(app: Express): Promise<void> {
         headStyles: { fillColor: [230, 53, 42], textColor: 255, fontStyle: "bold" },
         styles: { fontSize: 9 },
         columnStyles: {
-          0: { cellWidth: 60 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 15, halign: "center" },
-          3: { cellWidth: 25, halign: "right" },
-          4: { cellWidth: 30, halign: "right" },
-          5: { cellWidth: 25, halign: "right" },
+          0: { cellWidth: 55 },
+          1: { cellWidth: 28 },
+          2: { cellWidth: 18, halign: "center" },
+          3: { cellWidth: 30, halign: "right" },
+          4: { cellWidth: 32, halign: "right" },
+          5: { cellWidth: 32, halign: "right" },
         },
+        tableWidth: pageWidth - 40,
+        margin: { left: 20, right: 20 },
       });
 
       // Totals
@@ -563,6 +565,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(128);
+      doc.setTextColor(80);
       doc.text("Thank you for choosing 562 Tires!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
 
       const pdfBuffer = doc.output("arraybuffer");
