@@ -6,6 +6,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { insertProductSchema, insertCategorySchema, saleFormSchema } from "@shared/schema";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -46,13 +47,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
-      let categories = await storage.getCategories();
-      if (categories.length === 0) {
-        for (const cat of DEFAULT_CATEGORIES) {
+      const existing = await storage.getCategories();
+      const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
+      for (const cat of DEFAULT_CATEGORIES) {
+        if (!existingNames.has(cat.name.toLowerCase())) {
           await storage.createCategory(cat);
         }
-        categories = await storage.getCategories();
       }
+      const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch categories" });
@@ -135,7 +137,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/products", async (req, res) => {
     try {
-      const validated = insertProductSchema.parse(req.body);
+      const body = { ...req.body };
+      if (!body.sku || String(body.sku).trim() === "") {
+        const uuid = randomUUID().slice(0, 8).toUpperCase();
+        body.sku = `SKU-${uuid}`;
+      }
+
+      const validated = insertProductSchema.parse(body);
       const product = await storage.createProduct(validated);
       res.status(201).json(product);
     } catch (error: any) {

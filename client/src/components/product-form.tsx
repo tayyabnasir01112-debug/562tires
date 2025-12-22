@@ -52,6 +52,11 @@ interface ProductFormProps {
   onClose: () => void;
 }
 
+function generateSku() {
+  const ts = Date.now().toString(36).toUpperCase();
+  return `SKU-${ts.slice(-8)}`;
+}
+
 export function ProductForm({ product, categories, onClose }: ProductFormProps) {
   const { toast } = useToast();
   const isEditing = !!product;
@@ -59,7 +64,7 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
-      sku: product?.sku || "",
+      sku: product?.sku || generateSku(),
       name: product?.name || "",
       description: product?.description || "",
       categoryId: product?.categoryId?.toString() || "",
@@ -128,13 +133,15 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
               <FormItem>
                 <FormLabel>SKU *</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="e.g., TIR-225-65-17" 
-                    {...field} 
+                  <Input
+                    placeholder="Auto-generated"
+                    {...field}
                     className="font-mono"
                     data-testid="input-product-sku"
+                    disabled
                   />
                 </FormControl>
+                <FormDescription>Generated automatically</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
