@@ -479,22 +479,23 @@ export async function registerRoutes(app: Express): Promise<void> {
         `$${parseFloat(item.lineTotal).toFixed(2)}`,
       ]);
 
+      const tableWidth = pageWidth - 40;
       autoTable(doc, {
-        startY: 90,
+        startY: 95,
         head: [["Item", "SKU", "Qty", "Unit Price", "CA Tire Fee", "Total"]],
         body: tableData,
         theme: "striped",
         headStyles: { fillColor: [230, 53, 42], textColor: 255, fontStyle: "bold" },
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, cellPadding: 3, valign: "middle" },
         columnStyles: {
-          0: { cellWidth: 55 },
-          1: { cellWidth: 28 },
-          2: { cellWidth: 18, halign: "center" },
-          3: { cellWidth: 30, halign: "right" },
-          4: { cellWidth: 32, halign: "right" },
-          5: { cellWidth: 32, halign: "right" },
+          0: { cellWidth: 120 },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 30, halign: "center" },
+          3: { cellWidth: 70, halign: "right" },
+          4: { cellWidth: 70, halign: "right" },
+          5: { cellWidth: 70, halign: "right" },
         },
-        tableWidth: pageWidth - 40,
+        tableWidth,
         margin: { left: 20, right: 20 },
       });
 
