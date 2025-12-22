@@ -218,10 +218,13 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
         product.categoryId !== null &&
         product.categoryId !== undefined &&
         tireCategoryIds.includes(product.categoryId);
-      const looksLikeTire = (product.name || "").toLowerCase().includes("tire");
+      const productPerItemTax = parseFloat(product.perItemTax || "0");
       const inferredPerItemTax =
-        product.perItemTax ||
-        ((isTireCategory || looksLikeTire) && (product.condition || "new").toLowerCase() === "new" ? "1.75" : "0");
+        productPerItemTax > 0
+          ? productPerItemTax.toFixed(2)
+          : (isTireCategory && (product.condition || "new").toLowerCase() === "new"
+              ? "1.75"
+              : "0");
 
       append({
         productId: product.id,

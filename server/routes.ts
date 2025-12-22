@@ -23,10 +23,9 @@ function detectPerItemTax(product: any, category?: any) {
 
   const catName = category?.name?.toLowerCase?.() || "";
   const isTireCategory = catName.includes("tire");
-  const isTireName = (product?.name || "").toLowerCase().includes("tire");
   const isConditionNew = (product?.condition || "new").toLowerCase() === "new";
 
-  if ((isTireCategory && isConditionNew) || isTireName) {
+  if (isTireCategory && isConditionNew) {
     return DEFAULT_TIRE_FEE;
   }
   return 0;
@@ -364,9 +363,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       for (const item of items) {
         const product = await storage.getProduct(item.productId);
         const category = product?.categoryId ? await storage.getCategory(product.categoryId) : undefined;
-        const perItemTax = item.perItemTax && item.perItemTax !== ""
-          ? parseFloat(item.perItemTax)
-          : detectPerItemTax(product, category);
+        const requestedPerItemTax = parseFloat(item.perItemTax || "0");
+        const perItemTax =
+          requestedPerItemTax > 0
+            ? requestedPerItemTax
+            : detectPerItemTax(product, category);
+
         const lineTotal = parseFloat(item.unitPrice) * item.quantity;
         const lineTaxTotal = perItemTax * item.quantity;
         perItemTaxTotal += lineTaxTotal;
