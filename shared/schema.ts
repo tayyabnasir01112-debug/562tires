@@ -34,7 +34,7 @@ export const products = pgTable("products", {
   sellingPrice: decimal("selling_price", { precision: 10, scale: 2 }).notNull(),
   perItemTax: decimal("per_item_tax", { precision: 10, scale: 2 }).default("0"), // Fixed tax per item (e.g., $1.73/tire)
   location: text("location"), // Warehouse location
-  condition: text("condition").notNull().default("new"), // new, used, etc.
+  condition: text("condition").notNull().default("new"), // new, used, refurbished
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -72,8 +72,8 @@ export const sales = pgTable("sales", {
   globalTaxAmount: decimal("global_tax_amount", { precision: 10, scale: 2 }).notNull(),
   perItemTaxTotal: decimal("per_item_tax_total", { precision: 10, scale: 2 }).notNull().default("0"),
   discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
-  grandTotal: decimal("grand_total", { precision: 10, scale: 2 }).notNull(),
   laborCost: decimal("labor_cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  grandTotal: decimal("grand_total", { precision: 10, scale: 2 }).notNull(),
   // Payment
   paymentMethod: text("payment_method").notNull(), // cash, card, check
   paymentStatus: text("payment_status").notNull().default("paid"), // paid, pending

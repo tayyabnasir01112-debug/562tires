@@ -60,7 +60,7 @@ import {
   ShoppingCart,
   Receipt,
 } from "lucide-react";
-import type { Product, Category } from "@shared/schema";
+import type { Product } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 const saleFormSchema = z.object({
@@ -76,7 +76,6 @@ const saleFormSchema = z.object({
   paymentMethod: z.enum(["cash", "card", "check"]),
   notes: z.string().optional(),
   discount: z.string().optional(),
-  laborCost: z.string().optional(),
   items: z.array(z.object({
     productId: z.number(),
     productName: z.string(),
@@ -108,7 +107,7 @@ export default function NewSale() {
     queryKey: ["/api/settings/tax"],
   });
 
-  const { data: categories } = useQuery<Category[]>({
+  const { data: categories } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -129,7 +128,6 @@ export default function NewSale() {
       paymentMethod: "card",
       notes: "",
       discount: "0",
-    laborCost: "0",
       items: [],
     },
   });
@@ -141,7 +139,6 @@ export default function NewSale() {
 
   const watchedItems = form.watch("items");
   const watchedDiscount = form.watch("discount");
-const watchedLabor = form.watch("laborCost");
 
   // Calculate totals
   const subtotal = watchedItems.reduce((sum, item) => {
@@ -153,10 +150,9 @@ const watchedLabor = form.watch("laborCost");
   }, 0);
 
   const discount = parseFloat(watchedDiscount || "0");
-const laborCost = parseFloat(watchedLabor || "0");
-const taxableAmount = subtotal + laborCost - discount;
+  const taxableAmount = subtotal - discount;
   const globalTaxAmount = taxableAmount * (globalTaxRate / 100);
-const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
+  const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
 
   const createSaleMutation = useMutation({
     mutationFn: async (data: SaleFormData) => {
@@ -167,7 +163,6 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
         globalTaxAmount: globalTaxAmount.toFixed(2),
         perItemTaxTotal: perItemTaxTotal.toFixed(2),
         discount: discount.toFixed(2),
-        laborCost: laborCost.toFixed(2),
         grandTotal: grandTotal.toFixed(2),
       };
       return apiRequest("POST", "/api/sales", payload);
@@ -214,17 +209,15 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
         });
       }
     } else {
-      const isTireCategory =
+      const isTire =
         product.categoryId !== null &&
         product.categoryId !== undefined &&
         tireCategoryIds.includes(product.categoryId);
-      const productPerItemTax = parseFloat(product.perItemTax || "0");
+      const isNew = ((product as any).condition || "new").toLowerCase() === "new";
+
       const inferredPerItemTax =
-        productPerItemTax > 0
-          ? productPerItemTax.toFixed(2)
-          : (isTireCategory && (product.condition || "new").toLowerCase() === "new"
-              ? "1.75"
-              : "0");
+        product.perItemTax ||
+        (isTire && isNew ? "1.75" : "0");
 
       append({
         productId: product.id,
@@ -235,7 +228,7 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
         perItemTax: inferredPerItemTax,
         maxQuantity: product.quantity,
         categoryId: product.categoryId || undefined,
-        condition: product.condition,
+        condition: (product as any).condition,
       });
     }
     setProductSearchOpen(false);
@@ -658,31 +651,6 @@ const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
                                 {...field}
                                 className="pl-7 font-mono"
                                 data-testid="input-discount"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="laborCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Labor Cost</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                {...field}
-                                className="pl-7 font-mono"
-                                data-testid="input-labor-cost"
                               />
                             </div>
                           </FormControl>

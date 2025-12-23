@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import * as XLSX from "xlsx";
@@ -10,28 +11,27 @@ import { randomUUID } from "crypto";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-const DEFAULT_TIRE_FEE = 1.75;
 const DEFAULT_CATEGORIES = [
   { name: "Tires", description: "All types of tires" },
   { name: "Wheels", description: "Wheels and rims" },
   { name: "Tire Parts", description: "Accessories and parts for tires" },
 ];
+const DEFAULT_TIRE_FEE = 1.75;
 
 function detectPerItemTax(product: any, category?: any) {
   const explicit = product?.perItemTax ? parseFloat(product.perItemTax) : 0;
   if (explicit > 0) return explicit;
-
   const catName = category?.name?.toLowerCase?.() || "";
   const isTireCategory = catName.includes("tire");
   const isConditionNew = (product?.condition || "new").toLowerCase() === "new";
-
-  if (isTireCategory && isConditionNew) {
-    return DEFAULT_TIRE_FEE;
-  }
+  if (isTireCategory && isConditionNew) return DEFAULT_TIRE_FEE;
   return 0;
 }
 
-export async function registerRoutes(app: Express): Promise<void> {
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
   
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
@@ -141,7 +141,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         const uuid = randomUUID().slice(0, 8).toUpperCase();
         body.sku = `SKU-${uuid}`;
       }
-
       const validated = insertProductSchema.parse(body);
       const product = await storage.createProduct(validated);
       res.status(201).json(product);
@@ -363,10 +362,10 @@ export async function registerRoutes(app: Express): Promise<void> {
       for (const item of items) {
         const product = await storage.getProduct(item.productId);
         const category = product?.categoryId ? await storage.getCategory(product.categoryId) : undefined;
-        const requestedPerItemTax = parseFloat(item.perItemTax || "0");
+
         const perItemTax =
-          requestedPerItemTax > 0
-            ? requestedPerItemTax
+          item.perItemTax && item.perItemTax !== ""
+            ? parseFloat(item.perItemTax)
             : detectPerItemTax(product, category);
 
         const lineTotal = parseFloat(item.unitPrice) * item.quantity;
@@ -384,7 +383,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
 
-      const laborCost = parseFloat(saleData.laborCost || "0");
+      const laborCost = saleData.laborCost ? parseFloat(saleData.laborCost) : 0;
 
       const sale = await storage.createSale({
         ...saleData,
@@ -435,23 +434,23 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       // Customer info
       doc.setDrawColor(200);
-      doc.line(20, 50, pageWidth - 20, 50);
+      doc.line(20, 48, pageWidth - 20, 48);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
-      doc.text("Bill To:", 20, 60);
+      doc.text("Bill To:", 20, 58);
       doc.setFont("helvetica", "normal");
-      doc.text(sale.customerName, 20, 67);
-      if (sale.customerPhone) doc.text(sale.customerPhone, 20, 73);
-      if (sale.customerAddress) doc.text(sale.customerAddress, 20, 79);
+      doc.text(sale.customerName, 20, 65);
+      if (sale.customerPhone) doc.text(sale.customerPhone, 20, 71);
+      if (sale.customerAddress) doc.text(sale.customerAddress, 20, 77);
 
       // Vehicle info
       if (sale.vehicleMake || sale.vehicleModel) {
         doc.setFont("helvetica", "bold");
-        doc.text("Vehicle:", pageWidth / 2, 60);
+        doc.text("Vehicle:", pageWidth / 2, 58);
         doc.setFont("helvetica", "normal");
-        doc.text(`${sale.vehicleYear || ""} ${sale.vehicleMake || ""} ${sale.vehicleModel || ""}`.trim(), pageWidth / 2, 67);
-        if (sale.licensePlate) doc.text(`Plate: ${sale.licensePlate}`, pageWidth / 2, 73);
-        if (sale.mileage) doc.text(`Mileage: ${sale.mileage}`, pageWidth / 2, 79);
+        doc.text(`${sale.vehicleYear || ""} ${sale.vehicleMake || ""} ${sale.vehicleModel || ""}`.trim(), pageWidth / 2, 65);
+        if (sale.licensePlate) doc.text(`Plate: ${sale.licensePlate}`, pageWidth / 2, 71);
+        if (sale.mileage) doc.text(`Mileage: ${sale.mileage}`, pageWidth / 2, 77);
       }
 
       // Items table
@@ -466,12 +465,19 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       autoTable(doc, {
         startY: 90,
-        head: [["Item", "SKU", "Qty", "Unit Price", "CA Tire Fee", "Total"]],
+        head: [["Item", "SKU", "Qty", "Unit Price", "Item Tax", "Total"]],
         body: tableData,
         theme: "striped",
-        headStyles: { fillColor: [51, 51, 51], textColor: 255, fontStyle: "bold" },
+        headStyles: { fillColor: [51, 51, 51] },
         styles: { fontSize: 9 },
-        margin: { left: 20, right: 20 },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 15, halign: "center" },
+          3: { cellWidth: 25, halign: "right" },
+          4: { cellWidth: 25, halign: "right" },
+          5: { cellWidth: 25, halign: "right" },
+        },
       });
 
       // Totals
@@ -482,66 +488,42 @@ export async function registerRoutes(app: Express): Promise<void> {
       doc.text("Subtotal:", totalsX, finalY);
       doc.text(`$${parseFloat(sale.subtotal).toFixed(2)}`, pageWidth - 20, finalY, { align: "right" });
 
-      if (parseFloat(sale.laborCost || "0") > 0) {
-        doc.text("Labor:", totalsX, finalY + 6);
-        doc.text(`$${parseFloat(sale.laborCost || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
-      }
-
       if (parseFloat(sale.discount || "0") > 0) {
-        doc.text("Discount:", totalsX, finalY + 12);
-        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + 12, { align: "right" });
+        doc.text("Discount:", totalsX, finalY + 6);
+        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
       }
 
-      const discountOffset = parseFloat(sale.discount || "0") > 0 ? 6 : 0;
-      const laborOffset = parseFloat(sale.laborCost || "0") > 0 ? 6 : 0;
+      doc.text(`Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`, totalsX, finalY + 12);
+      doc.text(`$${parseFloat(sale.globalTaxAmount).toFixed(2)}`, pageWidth - 20, finalY + 12, { align: "right" });
 
-      doc.text(
-        `Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`,
-        totalsX,
-        finalY + 12 + laborOffset + discountOffset,
-      );
-      doc.text(
-        `$${parseFloat(sale.globalTaxAmount).toFixed(2)}`,
-        pageWidth - 20,
-        finalY + 12 + laborOffset + discountOffset,
-        { align: "right" },
-      );
-
-      const perItemOffset = parseFloat(sale.perItemTaxTotal || "0") > 0 ? 6 : 0;
       if (parseFloat(sale.perItemTaxTotal || "0") > 0) {
-        doc.text("California Tire Fee:", totalsX, finalY + 18 + laborOffset + discountOffset);
-        doc.text(
-          `$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`,
-          pageWidth - 20,
-          finalY + 18 + laborOffset + discountOffset,
-          { align: "right" },
-        );
+        doc.text("Per-Item Taxes:", totalsX, finalY + 18);
+        doc.text(`$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`, pageWidth - 20, finalY + 18, { align: "right" });
       }
 
-      const baseOffset = 22 + laborOffset + discountOffset + perItemOffset;
       doc.setDrawColor(100);
-      doc.line(totalsX, finalY + baseOffset, pageWidth - 20, finalY + baseOffset);
+      doc.line(totalsX, finalY + 22, pageWidth - 20, finalY + 22);
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("Total:", totalsX, finalY + baseOffset + 8);
-      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + baseOffset + 8, { align: "right" });
+      doc.text("Total:", totalsX, finalY + 30);
+      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + 30, { align: "right" });
 
       // Payment method
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + baseOffset + 8);
+      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + 30);
 
       // Notes
       if (sale.notes) {
-        doc.text("Notes:", 20, finalY + baseOffset + 20);
-        doc.text(sale.notes, 20, finalY + baseOffset + 26);
+        doc.text("Notes:", 20, finalY + 42);
+        doc.text(sale.notes, 20, finalY + 48);
       }
 
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(128);
-      doc.text("Thank you for choosing 562 Tires!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
+      doc.text("Thank you for choosing 562 Tyres!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
 
       const pdfBuffer = doc.output("arraybuffer");
       res.setHeader("Content-Type", "application/pdf");
@@ -737,5 +719,5 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  return;
+  return httpServer;
 }

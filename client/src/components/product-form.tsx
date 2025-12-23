@@ -76,21 +76,17 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
       sellingPrice: product?.sellingPrice || "",
       perItemTax: product?.perItemTax || "0",
       location: product?.location || "",
-    condition: product?.condition || "new",
+      condition: (product as any)?.condition || "new",
       isActive: product?.isActive ?? true,
     },
   });
 
   const mutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
-      const categoryId =
-        data.categoryId && data.categoryId !== "none"
-          ? parseInt(data.categoryId)
-          : null;
-
       const payload = {
         ...data,
-        categoryId,
+        categoryId: data.categoryId ? parseInt(data.categoryId) : null,
+        condition: data.condition || "new",
       };
       
       if (isEditing) {
@@ -133,9 +129,9 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
               <FormItem>
                 <FormLabel>SKU *</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Auto-generated"
-                    {...field}
+                  <Input 
+                    placeholder="Auto-generated" 
+                    {...field} 
                     className="font-mono"
                     data-testid="input-product-sku"
                     disabled
@@ -197,17 +193,33 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                  <SelectItem value="none">No category</SelectItem>
-                  {categories.length === 0 && (
-                    <SelectItem value="__no_categories" disabled>
-                      No categories yet — add them in Settings.
-                    </SelectItem>
-                  )}
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="condition"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Condition</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value || "new"}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-product-condition">
+                      <SelectValue placeholder="Select condition" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="used">Used</SelectItem>
+                    <SelectItem value="refurbished">Refurbished</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -383,28 +395,6 @@ export function ProductForm({ product, categories, onClose }: ProductFormProps) 
                   data-testid="input-product-location"
                 />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="condition"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Condition</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value || "new"}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-product-condition">
-                    <SelectValue placeholder="Select condition" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="used">Used</SelectItem>
-                  <SelectItem value="refurbished">Refurbished</SelectItem>
-                </SelectContent>
-              </Select>
               <FormMessage />
             </FormItem>
           )}
