@@ -314,31 +314,6 @@ export default function NewSale() {
                         </FormItem>
                       )}
                     />
-            <FormField
-              control={form.control}
-              name="laborCost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Labor</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        className="pl-7 font-mono"
-                        data-testid="input-labor-cost"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
