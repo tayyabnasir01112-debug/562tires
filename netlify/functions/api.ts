@@ -2,18 +2,18 @@ import type { Handler } from "@netlify/functions";
 import serverlessHttp from "serverless-http";
 import { createServerlessApp } from "../../server/app-serverless";
 
-let cachedHandler: ReturnType<typeof serverlessHttp> | null = null;
+let cached: ReturnType<typeof serverlessHttp> | null = null;
 
 async function getHandler() {
-  if (!cachedHandler) {
+  if (!cached) {
     const { app } = await createServerlessApp();
-    cachedHandler = serverlessHttp(app);
+    cached = serverlessHttp(app);
   }
-  return cachedHandler;
+  return cached;
 }
 
 export const handler: Handler = async (event, context) => {
-  const handler = await getHandler();
-  return handler(event, context);
+  const h = await getHandler();
+  return h(event, context);
 };
 
