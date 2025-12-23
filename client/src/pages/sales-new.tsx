@@ -76,6 +76,7 @@ const saleFormSchema = z.object({
   paymentMethod: z.enum(["cash", "card", "check"]),
   notes: z.string().optional(),
   discount: z.string().optional(),
+  laborCost: z.string().optional(),
   items: z.array(z.object({
     productId: z.number(),
     productName: z.string(),
@@ -128,6 +129,7 @@ export default function NewSale() {
       paymentMethod: "card",
       notes: "",
       discount: "0",
+      laborCost: "0",
       items: [],
     },
   });
@@ -139,6 +141,7 @@ export default function NewSale() {
 
   const watchedItems = form.watch("items");
   const watchedDiscount = form.watch("discount");
+  const watchedLabor = form.watch("laborCost");
 
   // Calculate totals
   const subtotal = watchedItems.reduce((sum, item) => {
@@ -150,7 +153,8 @@ export default function NewSale() {
   }, 0);
 
   const discount = parseFloat(watchedDiscount || "0");
-  const taxableAmount = subtotal - discount;
+  const laborCost = parseFloat(watchedLabor || "0");
+  const taxableAmount = subtotal + laborCost - discount;
   const globalTaxAmount = taxableAmount * (globalTaxRate / 100);
   const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
 
@@ -163,6 +167,7 @@ export default function NewSale() {
         globalTaxAmount: globalTaxAmount.toFixed(2),
         perItemTaxTotal: perItemTaxTotal.toFixed(2),
         discount: discount.toFixed(2),
+        laborCost: laborCost.toFixed(2),
         grandTotal: grandTotal.toFixed(2),
       };
       return apiRequest("POST", "/api/sales", payload);
@@ -307,6 +312,31 @@ export default function NewSale() {
                         </FormItem>
                       )}
                     />
+            <FormField
+              control={form.control}
+              name="laborCost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Labor</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        className="pl-7 font-mono"
+                        data-testid="input-labor-cost"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FormField

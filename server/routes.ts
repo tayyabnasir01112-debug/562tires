@@ -488,36 +488,56 @@ export async function registerRoutes(
       doc.text("Subtotal:", totalsX, finalY);
       doc.text(`$${parseFloat(sale.subtotal).toFixed(2)}`, pageWidth - 20, finalY, { align: "right" });
 
-      if (parseFloat(sale.discount || "0") > 0) {
-        doc.text("Discount:", totalsX, finalY + 6);
-        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
+      if (parseFloat((sale as any).laborCost || "0") > 0) {
+        doc.text("Labor:", totalsX, finalY + 6);
+        doc.text(`$${parseFloat((sale as any).laborCost || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
       }
 
-      doc.text(`Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`, totalsX, finalY + 12);
-      doc.text(`$${parseFloat(sale.globalTaxAmount).toFixed(2)}`, pageWidth - 20, finalY + 12, { align: "right" });
+      if (parseFloat(sale.discount || "0") > 0) {
+        const offset = parseFloat((sale as any).laborCost || "0") > 0 ? 12 : 6;
+        doc.text("Discount:", totalsX, finalY + offset);
+        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + offset, { align: "right" });
+      }
+
+      const discountOffset = parseFloat(sale.discount || "0") > 0 ? 6 : 0;
+      const laborOffset = parseFloat((sale as any).laborCost || "0") > 0 ? 6 : 0;
+
+      doc.text(
+        `Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`,
+        totalsX,
+        finalY + 12 + discountOffset + laborOffset,
+      );
+      doc.text(
+        `$${parseFloat(sale.globalTaxAmount).toFixed(2)}`,
+        pageWidth - 20,
+        finalY + 12 + discountOffset + laborOffset,
+        { align: "right" },
+      );
 
       if (parseFloat(sale.perItemTaxTotal || "0") > 0) {
-        doc.text("Per-Item Taxes:", totalsX, finalY + 18);
-        doc.text(`$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`, pageWidth - 20, finalY + 18, { align: "right" });
+        doc.text("Per-Item Taxes:", totalsX, finalY + 18 + discountOffset + laborOffset);
+        doc.text(`$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`, pageWidth - 20, finalY + 18 + discountOffset + laborOffset, { align: "right" });
       }
 
+      const perItemOffset = parseFloat(sale.perItemTaxTotal || "0") > 0 ? 6 : 0;
+
       doc.setDrawColor(100);
-      doc.line(totalsX, finalY + 22, pageWidth - 20, finalY + 22);
+      doc.line(totalsX, finalY + 22 + discountOffset + laborOffset + perItemOffset, pageWidth - 20, finalY + 22 + discountOffset + laborOffset + perItemOffset);
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("Total:", totalsX, finalY + 30);
-      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + 30, { align: "right" });
+      doc.text("Total:", totalsX, finalY + 30 + discountOffset + laborOffset + perItemOffset);
+      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + 30 + discountOffset + laborOffset + perItemOffset, { align: "right" });
 
       // Payment method
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + 30);
+      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + 30 + discountOffset + laborOffset + perItemOffset);
 
       // Notes
       if (sale.notes) {
-        doc.text("Notes:", 20, finalY + 42);
-        doc.text(sale.notes, 20, finalY + 48);
+        doc.text("Notes:", 20, finalY + 42 + discountOffset + laborOffset + perItemOffset);
+        doc.text(sale.notes, 20, finalY + 48 + discountOffset + laborOffset + perItemOffset);
       }
 
       // Footer
