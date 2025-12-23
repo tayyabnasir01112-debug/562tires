@@ -22,6 +22,8 @@ import {
   Car,
   Receipt,
   Circle,
+  Share2,
+  Copy,
 } from "lucide-react";
 import type { SaleWithItems } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +70,16 @@ export default function SaleDetail() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleShareLink = async () => {
+    if (!params?.id) return;
+    const link = `${window.location.origin}/receipt/${params.id}`;
+    await navigator.clipboard.writeText(link);
+    toast({
+      title: "Link copied",
+      description: "Invoice link copied to clipboard. Share it with your customer via text, email, or WhatsApp.",
+    });
   };
 
   if (isLoading) {
@@ -127,6 +139,10 @@ export default function SaleDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleShareLink}>
+            <Share2 className="h-4 w-4 mr-2" />
+            Share Link
+          </Button>
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print

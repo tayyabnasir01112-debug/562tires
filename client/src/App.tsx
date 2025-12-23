@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,6 +15,7 @@ import SalesHistory from "@/pages/sales-history";
 import SaleDetail from "@/pages/sale-detail";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import Receipt from "@/pages/receipt";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/sales/new" component={NewSale} />
       <Route path="/sales/:id" component={SaleDetail} />
       <Route path="/sales" component={SalesHistory} />
+      <Route path="/receipt/:id" component={Receipt} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
@@ -32,10 +34,27 @@ function Router() {
 }
 
 function App() {
+  const [location] = useLocation();
+  const isReceiptPage = location.startsWith("/receipt/");
+  
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   } as React.CSSProperties;
+
+  // Render receipt page without sidebar
+  if (isReceiptPage) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

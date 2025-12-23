@@ -1,16 +1,20 @@
-import { useRoute, Link } from "wouter";
+import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { SaleWithItems } from "@shared/schema";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Loader2, Copy, Share2, ArrowLeft } from "lucide-react";
+import { Loader2, Copy, Share2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMemo } from "react";
 
 function formatMoney(v: number | string) {
   const num = typeof v === "string" ? parseFloat(v || "0") : v;
   return `$${num.toFixed(2)}`;
+}
+
+function formatTotal(v: number | string) {
+  const num = typeof v === "string" ? parseFloat(v || "0") : v;
+  const parts = num.toFixed(2).split(".");
+  return { dollars: parts[0], cents: parts[1] };
 }
 
 export default function Receipt() {
@@ -33,6 +37,10 @@ export default function Receipt() {
     return { subtotal, perItemTax, discount, salesTax, labor, total };
   }, [sale]);
 
+  const taxesAndFees = useMemo(() => {
+    return totals.perItemTax + totals.salesTax;
+  }, [totals]);
+
   const shareWhatsApp = () => {
     if (!params?.id) return;
     const link = `${window.location.origin}/receipt/${params.id}`;
@@ -47,9 +55,23 @@ export default function Receipt() {
     toast({ title: "Link copied", description: "Invoice link copied to clipboard." });
   };
 
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === "string" ? new Date(date) : date;
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const month = months[d.getMonth()];
+    const day = d.getDate();
+    const year = d.getFullYear();
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, "0");
+    return `${month} ${day}, ${year} • ${displayHours}:${displayMinutes} ${ampm}`;
+  };
+
   if (isLoading || !sale) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading invoice...
@@ -58,132 +80,171 @@ export default function Receipt() {
     );
   }
 
+  const totalFormatted = formatTotal(totals.total);
+  const isCash = sale.paymentMethod?.toLowerCase() === "cash";
+  const cashGiven = isCash ? totals.total : 0;
+  const changeReceived = 0; // We don't track this currently
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 py-10 px-4 flex justify-center">
-      <div className="w-full max-w-2xl space-y-4">
-        <header className="bg-slate-800 text-slate-50 rounded-xl p-6 text-center shadow">
-          <h1 className="text-xl font-semibold">562 Tires Corp</h1>
-          <p className="text-sm text-slate-200 mt-1">Thank you for choosing 562 Tires!</p>
-          <div className="text-sm text-blue-100 space-y-1 mt-3">
-            <p>13441 IMPERIAL HWY</p>
-            <p>WHITTIER, CA 90605</p>
-            <p>+1 562-941-7351</p>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-md mx-auto">
+        {/* Header - Dark Teal/Green Background */}
+        <header className="bg-[#0d9488] text-white rounded-t-lg p-6 text-center">
+          {/* Logo placeholder - circular with light blue background */}
+          <div className="w-16 h-16 mx-auto mb-4 bg-blue-400 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-white rounded-full"></div>
+          </div>
+          
+          <h1 className="text-2xl font-bold mb-2">562 Tires Corp</h1>
+          <p className="text-sm italic text-white/90 mb-4">Thank you for choosing 562 Tires!</p>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mb-4 bg-blue-500 hover:bg-blue-600 text-white border-0"
+          >
+            FOLLOW
+          </Button>
+          
+          <div className="text-sm space-y-1 mt-4">
+            <a 
+              href="https://maps.google.com/?q=13441+IMPERIAL+HWY+WHITTIER+CA+90605" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-200 underline hover:text-blue-100 block"
+            >
+              13441 IMPERIAL HWY
+            </a>
+            <a 
+              href="https://maps.google.com/?q=13441+IMPERIAL+HWY+WHITTIER+CA+90605" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-200 underline hover:text-blue-100 block"
+            >
+              WHITTIER, CA 90605
+            </a>
+            <a 
+              href="tel:+15629417351" 
+              className="text-blue-200 underline hover:text-blue-100 block"
+            >
+              +1 562-941-7351
+            </a>
           </div>
         </header>
 
-        <div className="flex gap-2 justify-center">
-          <Button variant="outline" onClick={copyLink}>
+        {/* Action Buttons */}
+        <div className="flex gap-2 justify-center py-4 bg-white border-x border-gray-200">
+          <Button variant="outline" size="sm" onClick={copyLink}>
             <Copy className="h-4 w-4 mr-2" />
             Copy Link
           </Button>
-          <Button variant="outline" onClick={shareWhatsApp}>
+          <Button variant="outline" size="sm" onClick={shareWhatsApp}>
             <Share2 className="h-4 w-4 mr-2" />
-            Share via WhatsApp
+            WhatsApp
           </Button>
-          <Button asChild>
-            <Link href={`/api/sales/${params?.id}/invoice`}>Download PDF</Link>
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/sales/${params?.id}/invoice`} download>
+              <Download className="h-4 w-4 mr-2" />
+              PDF
+            </a>
           </Button>
         </div>
 
-        <Card className="bg-white shadow">
-          <CardContent className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Invoice</p>
-                <p className="text-lg font-semibold text-slate-900">{sale.invoiceNumber}</p>
-                <p className="text-sm text-slate-500">{new Date(sale.saleDate!).toLocaleString()}</p>
-              </div>
-              <div className="text-right space-y-1">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
-                <p className="text-sm font-semibold text-slate-900">{sale.paymentStatus?.toUpperCase?.()}</p>
-              </div>
-            </div>
+        {/* Receipt Content - White Background */}
+        <div className="bg-white rounded-b-lg p-6 space-y-4 border-x border-b border-gray-200">
+          {/* Line Items */}
+          <div className="space-y-2">
+            {sale.items.map((item) => {
+              const itemName = item.productName || "Item";
+              const itemTotal = parseFloat(item.lineTotal || "0");
+              return (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="text-gray-900">• {itemName}</span>
+                  <span className="text-gray-900 font-medium">{formatMoney(itemTotal)}</span>
+                </div>
+              );
+            })}
+          </div>
 
-            <Separator />
+          {/* Subtotal */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-900">Subtotal</span>
+            <span className="text-gray-900 font-medium">{formatMoney(totals.subtotal)}</span>
+          </div>
 
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Bill To</p>
-              <p className="font-semibold">{sale.customerName || "Walk-in Customer"}</p>
-              {sale.customerPhone && <p className="text-sm text-slate-600">{sale.customerPhone}</p>}
-              {sale.customerEmail && <p className="text-sm text-slate-600">{sale.customerEmail}</p>}
-              {sale.customerAddress && <p className="text-sm text-slate-600">{sale.customerAddress}</p>}
-            </div>
+          {/* Tax Breakdown Table */}
+          <div className="border-t border-gray-200 pt-2">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr>
+                  <td className="text-gray-900">Whittier</td>
+                  <td className="text-right text-gray-600">{sale.globalTaxRate}%</td>
+                  <td className="text-right text-gray-900 font-medium">{formatMoney(totals.salesTax)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-            {(sale.vehicleMake || sale.vehicleModel) && (
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Vehicle</p>
-                <p className="font-semibold">
-                  {sale.vehicleYear} {sale.vehicleMake} {sale.vehicleModel}
-                </p>
-                {sale.licensePlate && <p className="text-sm text-slate-600">Plate: {sale.licensePlate}</p>}
-                {sale.mileage && <p className="text-sm text-slate-600">Mileage: {sale.mileage}</p>}
-              </div>
-            )}
-
-            <div className="rounded-lg border border-slate-200 overflow-hidden">
+          {/* California Tire Fee */}
+          {totals.perItemTax > 0 && (
+            <div className="border-t border-gray-200 pt-2">
               <table className="w-full text-sm">
                 <tbody>
-                  {sale.items.map((item) => {
-                    const lineTax = parseFloat(item.perItemTax || "0") * item.quantity;
-                    const lineTotal = parseFloat(item.lineTotal || "0");
-                    return (
-                      <tr key={item.id} className="border-b last:border-0">
-                        <td className="py-3 px-3">
-                          <div className="font-semibold text-slate-900">{item.productName}</div>
-                          <div className="text-xs text-slate-500">{item.productSku}</div>
-                        </td>
-                        <td className="py-3 px-3 text-right align-top">{item.quantity}</td>
-                        <td className="py-3 px-3 text-right align-top">{formatMoney(item.unitPrice)}</td>
-                        <td className="py-3 px-3 text-right align-top">{formatMoney(lineTax)}</td>
-                        <td className="py-3 px-3 text-right align-top">{formatMoney(lineTotal)}</td>
-                      </tr>
-                    );
-                  })}
+                  <tr>
+                    <td className="text-gray-900">California Tire Fee</td>
+                    <td></td>
+                    <td className="text-right text-gray-900 font-medium">{formatMoney(totals.perItemTax)}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
+          )}
 
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Subtotal</span>
-                <span className="font-mono text-slate-900">{formatMoney(totals.subtotal)}</span>
-              </div>
-              {totals.labor > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Labor</span>
-                  <span className="font-mono text-slate-900">{formatMoney(totals.labor)}</span>
+          {/* Taxes and Fees Total */}
+          <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
+            <span className="text-gray-900">Taxes and Fees</span>
+            <span className="text-gray-900 font-medium">{formatMoney(taxesAndFees)}</span>
+          </div>
+
+          {/* Total - Large Blue Text */}
+          <div className="flex justify-between items-baseline border-t-2 border-gray-300 pt-4 mt-4">
+            <span className="text-xl font-bold text-blue-600">Total</span>
+            <span className="text-3xl font-bold text-blue-600">
+              $ {totalFormatted.dollars} <span className="text-2xl">{totalFormatted.cents}</span>
+            </span>
+          </div>
+
+          {/* Payment Information */}
+          {isCash && (
+            <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">$</span>
                 </div>
-              )}
-              {totals.discount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Discount</span>
-                  <span className="font-mono text-red-600">-{formatMoney(totals.discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-slate-600">California Tire Fee</span>
-                <span className="font-mono text-slate-900">{formatMoney(totals.perItemTax)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Sales Tax ({sale.globalTaxRate}%)</span>
-                <span className="font-mono text-slate-900">{formatMoney(totals.salesTax)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-900 uppercase font-medium">Cash Given</span>
+                <span className="text-gray-900 font-medium">{formatMoney(cashGiven)}</span>
               </div>
-              <Separator />
-              <div className="flex justify-between font-semibold text-base">
-                <span>Total</span>
-                <span className="font-mono">{formatMoney(totals.total)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-900 uppercase font-medium">Change Received</span>
+                <span className="text-gray-900 font-medium">{formatMoney(changeReceived)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span className="text-gray-900 uppercase">Cash Paid</span>
+                <span className="text-gray-900">{formatMoney(totals.total)}</span>
               </div>
             </div>
+          )}
 
-            <div className="space-y-1 text-sm text-slate-600">
-              <p>Payment Method: {sale.paymentMethod?.toUpperCase?.()}</p>
-              {sale.notes && <p>Notes: {sale.notes}</p>}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Footer */}
+          <div className="border-t border-gray-200 pt-4 mt-4 text-xs text-gray-600 space-y-1">
+            <div>{formatDate(sale.saleDate!)}</div>
+            <div>Payment ID: {sale.invoiceNumber}</div>
+            <div>Order ID: {sale.id}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
-
