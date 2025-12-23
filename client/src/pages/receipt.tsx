@@ -98,14 +98,6 @@ export default function Receipt() {
           <h1 className="text-2xl font-bold mb-2">562 Tires Corp</h1>
           <p className="text-sm italic text-white/90 mb-4">Thank you for choosing 562 Tires!</p>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mb-4 bg-blue-500 hover:bg-blue-600 text-white border-0"
-          >
-            FOLLOW
-          </Button>
-          
           <div className="text-sm space-y-1 mt-4">
             <a 
               href="https://maps.google.com/?q=13441+IMPERIAL+HWY+WHITTIER+CA+90605" 
@@ -210,7 +202,7 @@ export default function Receipt() {
           <div className="flex justify-between items-baseline border-t-2 border-gray-300 pt-4 mt-4">
             <span className="text-xl font-bold text-blue-600">Total</span>
             <span className="text-3xl font-bold text-blue-600">
-              $ {totalFormatted.dollars} <span className="text-2xl">{totalFormatted.cents}</span>
+              $ {totalFormatted.dollars}.<span className="text-2xl">{totalFormatted.cents}</span>
             </span>
           </div>
 
