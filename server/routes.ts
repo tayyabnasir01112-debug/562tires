@@ -18,6 +18,16 @@ const DEFAULT_CATEGORIES = [
 ];
 const DEFAULT_TIRE_FEE = 1.75;
 
+async function ensureDefaultCategories() {
+  const existing = await storage.getCategories();
+  const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
+  for (const cat of DEFAULT_CATEGORIES) {
+    if (!existingNames.has(cat.name.toLowerCase())) {
+      await storage.createCategory(cat);
+    }
+  }
+}
+
 function detectPerItemTax(product: any, category?: any) {
   const explicit = product?.perItemTax ? parseFloat(product.perItemTax) : 0;
   if (explicit > 0) return explicit;
@@ -32,6 +42,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // Seed default categories once at startup
+  await ensureDefaultCategories();
   
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
@@ -46,13 +59,7 @@ export async function registerRoutes(
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
-      const existing = await storage.getCategories();
-      const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
-      for (const cat of DEFAULT_CATEGORIES) {
-        if (!existingNames.has(cat.name.toLowerCase())) {
-          await storage.createCategory(cat);
-        }
-      }
+      await ensureDefaultCategories();
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
