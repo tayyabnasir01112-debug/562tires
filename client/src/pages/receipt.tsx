@@ -59,23 +59,23 @@ export default function Receipt() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-slate-900 py-8 px-4">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <header className="text-center space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">562 Tires Corp</h1>
-          <div className="text-sm text-muted-foreground space-y-1">
+    <div className="min-h-screen bg-slate-900 text-slate-50 py-8 px-4 flex justify-center">
+      <div className="w-full max-w-2xl space-y-6">
+        <header className="bg-slate-800 rounded-xl p-6 text-center space-y-2 shadow">
+          <h1 className="text-2xl font-semibold">562 Tires Corp</h1>
+          <p className="text-sm text-slate-200">Thank you for choosing 562 Tires!</p>
+          <div className="text-sm text-blue-200 space-y-1">
             <p>13441 Imperial Hwy, Whittier, CA 90605</p>
-            <p>+1 (562) 941-7351</p>
-            <p>Mon-Fri 8am-7pm • Sat 8am-5pm • Sun 8am-3pm</p>
+            <p>+1 562-941-7351</p>
           </div>
         </header>
 
         <div className="flex gap-2 justify-center">
-          <Button variant="outline" onClick={copyLink}>
+          <Button variant="outline" onClick={copyLink} className="bg-white text-slate-900 hover:bg-slate-100">
             <Copy className="h-4 w-4 mr-2" />
             Copy Link
           </Button>
-          <Button variant="outline" onClick={shareWhatsApp}>
+          <Button variant="outline" onClick={shareWhatsApp} className="bg-white text-slate-900 hover:bg-slate-100">
             <Share2 className="h-4 w-4 mr-2" />
             Share via WhatsApp
           </Button>
@@ -84,17 +84,17 @@ export default function Receipt() {
           </Button>
         </div>
 
-        <Card>
+        <Card className="bg-white text-slate-900 shadow-lg">
           <CardContent className="p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice</p>
-                <p className="text-lg font-semibold">{sale.invoiceNumber}</p>
-                <p className="text-sm text-muted-foreground">{new Date(sale.saleDate!).toLocaleString()}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Invoice</p>
+                <p className="text-lg font-semibold text-slate-900">{sale.invoiceNumber}</p>
+                <p className="text-sm text-slate-500">{new Date(sale.saleDate!).toLocaleString()}</p>
               </div>
               <div className="text-right space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
-                <p className="text-sm font-semibold">{sale.paymentStatus?.toUpperCase?.()}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
+                <p className="text-sm font-semibold text-slate-900">{sale.paymentStatus?.toUpperCase?.()}</p>
               </div>
             </div>
 
@@ -102,36 +102,36 @@ export default function Receipt() {
 
             <div className="grid sm:grid-cols-2 gap-6">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Bill To</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Bill To</p>
                 <p className="font-semibold">{sale.customerName || "Walk-in Customer"}</p>
-                {sale.customerPhone && <p className="text-sm text-muted-foreground">{sale.customerPhone}</p>}
-                {sale.customerEmail && <p className="text-sm text-muted-foreground">{sale.customerEmail}</p>}
-                {sale.customerAddress && <p className="text-sm text-muted-foreground">{sale.customerAddress}</p>}
+                {sale.customerPhone && <p className="text-sm text-slate-600">{sale.customerPhone}</p>}
+                {sale.customerEmail && <p className="text-sm text-slate-600">{sale.customerEmail}</p>}
+                {sale.customerAddress && <p className="text-sm text-slate-600">{sale.customerAddress}</p>}
               </div>
               <div>
                 {(sale.vehicleMake || sale.vehicleModel) && (
                   <>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Vehicle</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Vehicle</p>
                     <p className="font-semibold">
                       {sale.vehicleYear} {sale.vehicleMake} {sale.vehicleModel}
                     </p>
-                    {sale.licensePlate && <p className="text-sm text-muted-foreground">Plate: {sale.licensePlate}</p>}
-                    {sale.mileage && <p className="text-sm text-muted-foreground">Mileage: {sale.mileage}</p>}
+                    {sale.licensePlate && <p className="text-sm text-slate-600">Plate: {sale.licensePlate}</p>}
+                    {sale.mileage && <p className="text-sm text-slate-600">Mileage: {sale.mileage}</p>}
                   </>
                 )}
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="rounded-lg border border-slate-200 overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr className="text-left">
-                    <th className="py-2 pr-2">Item</th>
-                    <th className="py-2 pr-2">SKU</th>
-                    <th className="py-2 pr-2 text-right">Qty</th>
-                    <th className="py-2 pr-2 text-right">Unit Price</th>
-                    <th className="py-2 pr-2 text-right">CA Tire Fee</th>
-                    <th className="py-2 text-right">Line Total</th>
+                <thead className="bg-slate-50 border-b">
+                  <tr className="text-left text-slate-600">
+                    <th className="py-2 px-3">Item</th>
+                    <th className="py-2 px-3">SKU</th>
+                    <th className="py-2 px-3 text-right">Qty</th>
+                    <th className="py-2 px-3 text-right">Unit Price</th>
+                    <th className="py-2 px-3 text-right">CA Tire Fee</th>
+                    <th className="py-2 px-3 text-right">Line Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -140,12 +140,12 @@ export default function Receipt() {
                     const lineTotal = parseFloat(item.lineTotal || "0");
                     return (
                       <tr key={item.id}>
-                        <td className="py-2 pr-2">{item.productName}</td>
-                        <td className="py-2 pr-2 text-muted-foreground">{item.productSku}</td>
-                        <td className="py-2 pr-2 text-right">{item.quantity}</td>
-                        <td className="py-2 pr-2 text-right">{formatMoney(item.unitPrice)}</td>
-                        <td className="py-2 pr-2 text-right">{formatMoney(lineTax)}</td>
-                        <td className="py-2 text-right">{formatMoney(lineTotal)}</td>
+                        <td className="py-2 px-3">{item.productName}</td>
+                        <td className="py-2 px-3 text-slate-500">{item.productSku}</td>
+                        <td className="py-2 px-3 text-right">{item.quantity}</td>
+                        <td className="py-2 px-3 text-right">{formatMoney(item.unitPrice)}</td>
+                        <td className="py-2 px-3 text-right">{formatMoney(lineTax)}</td>
+                        <td className="py-2 px-3 text-right">{formatMoney(lineTotal)}</td>
                       </tr>
                     );
                   })}
@@ -154,34 +154,34 @@ export default function Receipt() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-6">
-              <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="space-y-2 text-sm text-slate-600">
                 <p>Payment Method: {sale.paymentMethod?.toUpperCase?.()}</p>
                 {sale.notes && <p>Notes: {sale.notes}</p>}
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono">{formatMoney(totals.subtotal)}</span>
+                  <span className="text-slate-600">Subtotal</span>
+                  <span className="font-mono text-slate-900">{formatMoney(totals.subtotal)}</span>
                 </div>
                 {totals.labor > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Labor</span>
-                    <span className="font-mono">{formatMoney(totals.labor)}</span>
+                    <span className="text-slate-600">Labor</span>
+                    <span className="font-mono text-slate-900">{formatMoney(totals.labor)}</span>
                   </div>
                 )}
                 {totals.discount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Discount</span>
-                    <span className="font-mono text-destructive">-{formatMoney(totals.discount)}</span>
+                    <span className="text-slate-600">Discount</span>
+                    <span className="font-mono text-red-600">-{formatMoney(totals.discount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">CA Tire Fee</span>
-                  <span className="font-mono">{formatMoney(totals.perItemTax)}</span>
+                  <span className="text-slate-600">CA Tire Fee</span>
+                  <span className="font-mono text-slate-900">{formatMoney(totals.perItemTax)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sales Tax ({sale.globalTaxRate}%)</span>
-                  <span className="font-mono">{formatMoney(totals.salesTax)}</span>
+                  <span className="text-slate-600">Sales Tax ({sale.globalTaxRate}%)</span>
+                  <span className="font-mono text-slate-900">{formatMoney(totals.salesTax)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-semibold text-base">
@@ -196,4 +196,5 @@ export default function Receipt() {
     </div>
   );
 }
+
 
