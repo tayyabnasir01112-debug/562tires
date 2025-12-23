@@ -220,9 +220,11 @@ export default function NewSale() {
         tireCategoryIds.includes(product.categoryId);
       const isNew = ((product as any).condition || "new").toLowerCase() === "new";
 
+      const productPerItemTax = parseFloat(product.perItemTax || "0");
       const inferredPerItemTax =
-        product.perItemTax ||
-        (isTire && isNew ? "1.75" : "0");
+        productPerItemTax > 0
+          ? productPerItemTax.toFixed(2)
+          : (isTire && isNew ? "1.75" : "0");
 
       append({
         productId: product.id,
