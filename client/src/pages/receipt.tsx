@@ -41,6 +41,36 @@ export default function Receipt() {
     return totals.perItemTax + totals.salesTax;
   }, [totals]);
 
+  // Calculate California Tire Fee breakdown
+  const tireFeeBreakdown = useMemo(() => {
+    if (!sale || totals.perItemTax <= 0) return null;
+    
+    // Find items with tire fee and calculate breakdown
+    const tireFeeItems = sale.items.filter(item => {
+      const itemTax = parseFloat(item.perItemTax || "0");
+      return itemTax > 0;
+    });
+
+    if (tireFeeItems.length === 0) return null;
+
+    // Calculate total quantity and per-item fee
+    let totalQuantity = 0;
+    let perItemFee = 0;
+    
+    tireFeeItems.forEach(item => {
+      const itemTax = parseFloat(item.perItemTax || "0");
+      if (itemTax > 0) {
+        totalQuantity += item.quantity || 1;
+        // Use the first item's per-item tax as the fee rate
+        if (perItemFee === 0) {
+          perItemFee = itemTax;
+        }
+      }
+    });
+
+    return { perItemFee, totalQuantity, total: totals.perItemTax };
+  }, [sale, totals.perItemTax]);
+
   const shareWhatsApp = () => {
     if (!params?.id) return;
     const link = `${window.location.origin}/receipt/${params.id}`;
@@ -124,17 +154,18 @@ export default function Receipt() {
           </div>
         </header>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 justify-center py-4 bg-white border-x border-gray-200">
-          <Button variant="outline" size="sm" onClick={copyLink}>
+        {/* Action Buttons - Mobile responsive */}
+        <div className="flex flex-wrap gap-2 justify-center py-4 bg-white border-x border-gray-200 px-2">
+          <Button variant="outline" size="sm" onClick={copyLink} className="flex-1 min-w-[100px] sm:flex-none">
             <Copy className="h-4 w-4 mr-2" />
-            Copy Link
+            <span className="hidden sm:inline">Copy Link</span>
+            <span className="sm:hidden">Copy</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={shareWhatsApp}>
+          <Button variant="outline" size="sm" onClick={shareWhatsApp} className="flex-1 min-w-[100px] sm:flex-none">
             <Share2 className="h-4 w-4 mr-2" />
             WhatsApp
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild className="flex-1 min-w-[100px] sm:flex-none">
             <a href={`/api/sales/${params?.id}/invoice`} download>
               <Download className="h-4 w-4 mr-2" />
               PDF
@@ -149,9 +180,10 @@ export default function Receipt() {
             {sale.items.map((item) => {
               const itemName = item.productName || "Item";
               const itemTotal = parseFloat(item.lineTotal || "0");
+              const quantity = item.quantity || 1;
               return (
                 <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-gray-900">• {itemName}</span>
+                  <span className="text-gray-900">• {itemName} {quantity > 1 ? `x ${quantity}` : ""}</span>
                   <span className="text-gray-900 font-medium">{formatMoney(itemTotal)}</span>
                 </div>
               );
@@ -163,6 +195,22 @@ export default function Receipt() {
             <span className="text-gray-900">Subtotal</span>
             <span className="text-gray-900 font-medium">{formatMoney(totals.subtotal)}</span>
           </div>
+
+          {/* Labor Cost */}
+          {totals.labor > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-900">Labor</span>
+              <span className="text-gray-900 font-medium">{formatMoney(totals.labor)}</span>
+            </div>
+          )}
+
+          {/* Discount */}
+          {totals.discount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-900">Discount</span>
+              <span className="text-gray-900 font-medium text-red-600">-{formatMoney(totals.discount)}</span>
+            </div>
+          )}
 
           {/* Tax Breakdown Table */}
           <div className="border-t border-gray-200 pt-2">
@@ -178,14 +226,21 @@ export default function Receipt() {
           </div>
 
           {/* California Tire Fee */}
-          {totals.perItemTax > 0 && (
+          {tireFeeBreakdown && (
             <div className="border-t border-gray-200 pt-2">
               <table className="w-full text-sm">
                 <tbody>
                   <tr>
-                    <td className="text-gray-900">California Tire Fee</td>
+                    <td className="text-gray-900">
+                      California Tire Fee
+                      {tireFeeBreakdown.totalQuantity > 1 && (
+                        <span className="text-gray-600 ml-1">
+                          ({formatMoney(tireFeeBreakdown.perItemFee)} x {tireFeeBreakdown.totalQuantity})
+                        </span>
+                      )}
+                    </td>
                     <td></td>
-                    <td className="text-right text-gray-900 font-medium">{formatMoney(totals.perItemTax)}</td>
+                    <td className="text-right text-gray-900 font-medium">{formatMoney(tireFeeBreakdown.total)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -234,6 +289,32 @@ export default function Receipt() {
             <div>{formatDate(sale.saleDate!)}</div>
             <div>Payment ID: {sale.invoiceNumber}</div>
             <div>Order ID: {sale.id}</div>
+          </div>
+
+          {/* Marketing Footer */}
+          <div className="border-t-2 border-gray-300 pt-4 mt-6 text-center space-y-2">
+            <div className="text-sm font-semibold text-gray-900">Need a similar system for your business?</div>
+            <div className="text-xs text-gray-700 space-y-1">
+              <div className="font-medium">Tayyab Automates LTD</div>
+              <div>
+                <a 
+                  href="https://tayyabautomates.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  https://tayyabautomates.com/
+                </a>
+              </div>
+              <div>
+                <a 
+                  href="mailto:connect@tayyabautomates.com"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  connect@tayyabautomates.com
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
