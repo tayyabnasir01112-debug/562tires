@@ -155,22 +155,59 @@ export default function Receipt() {
         </header>
 
         {/* Action Buttons - Mobile responsive */}
-        <div className="flex flex-wrap gap-2 justify-center py-4 bg-white border-x border-gray-200 px-2">
-          <Button variant="outline" size="sm" onClick={copyLink} className="flex-1 min-w-[100px] sm:flex-none">
+        <div className="flex flex-wrap gap-2 justify-center py-4 bg-white border-x border-gray-200 px-2" style={{ opacity: 1, visibility: 'visible' }}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={copyLink} 
+            className="flex-1 min-w-[100px] sm:flex-none bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+            style={{ 
+              WebkitAppearance: 'none', 
+              appearance: 'none',
+              opacity: 1,
+              visibility: 'visible',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
             <Copy className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Copy Link</span>
             <span className="sm:hidden">Copy</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={shareWhatsApp} className="flex-1 min-w-[100px] sm:flex-none">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={shareWhatsApp} 
+            className="flex-1 min-w-[100px] sm:flex-none bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+            style={{ 
+              WebkitAppearance: 'none', 
+              appearance: 'none',
+              opacity: 1,
+              visibility: 'visible',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
             <Share2 className="h-4 w-4 mr-2" />
             WhatsApp
           </Button>
-          <Button variant="outline" size="sm" asChild className="flex-1 min-w-[100px] sm:flex-none">
-            <a href={`/api/sales/${params?.id}/invoice`} download>
-              <Download className="h-4 w-4 mr-2" />
-              PDF
-            </a>
-          </Button>
+          <a 
+            href={`/api/sales/${params?.id}/invoice`} 
+            download
+            className="flex-1 min-w-[100px] sm:flex-none inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+            style={{ 
+              WebkitAppearance: 'none', 
+              appearance: 'none',
+              opacity: 1,
+              visibility: 'visible',
+              textDecoration: 'none'
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            PDF
+          </a>
         </div>
 
         {/* Receipt Content - White Background */}
