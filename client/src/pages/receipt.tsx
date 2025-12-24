@@ -1,7 +1,6 @@
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { SaleWithItems } from "@shared/schema";
-import { Button } from "@/components/ui/button";
 import { Loader2, Copy, Share2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMemo } from "react";
@@ -156,43 +155,39 @@ export default function Receipt() {
 
         {/* Action Buttons - Mobile responsive */}
         <div className="flex flex-wrap gap-2 justify-center py-4 bg-white border-x border-gray-200 px-2" style={{ opacity: 1, visibility: 'visible' }}>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={copyLink} 
-            className="flex-1 min-w-[100px] sm:flex-none bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+          <button
+            type="button"
+            onClick={copyLink}
+            className="flex-1 min-w-[100px] sm:flex-none inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
             style={{ 
               WebkitAppearance: 'none', 
               appearance: 'none',
               opacity: 1,
               visibility: 'visible',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              textDecoration: 'none',
+              cursor: 'pointer'
             }}
           >
             <Copy className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Copy Link</span>
             <span className="sm:hidden">Copy</span>
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={shareWhatsApp} 
-            className="flex-1 min-w-[100px] sm:flex-none bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+          </button>
+          <button
+            type="button"
+            onClick={shareWhatsApp}
+            className="flex-1 min-w-[100px] sm:flex-none inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
             style={{ 
               WebkitAppearance: 'none', 
               appearance: 'none',
               opacity: 1,
               visibility: 'visible',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              textDecoration: 'none',
+              cursor: 'pointer'
             }}
           >
             <Share2 className="h-4 w-4 mr-2" />
             WhatsApp
-          </Button>
+          </button>
           <a 
             href={`/api/sales/${params?.id}/invoice`} 
             download
