@@ -119,9 +119,19 @@ export default function Receipt() {
       <div className="max-w-md mx-auto">
         {/* Header - Dark Teal/Green Background */}
         <header className="bg-[#0d9488] text-white rounded-t-lg p-6 text-center">
-          {/* Logo placeholder - circular with light blue background */}
-          <div className="w-16 h-16 mx-auto mb-4 bg-blue-400 rounded-full flex items-center justify-center">
-            <div className="w-10 h-10 bg-white rounded-full"></div>
+          {/* Company Logo */}
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <img 
+              src="/562logo.png" 
+              alt="562 Tires Logo" 
+              className="w-20 h-20 object-contain rounded-full"
+              style={{ 
+                maxWidth: '80px',
+                maxHeight: '80px',
+                width: 'auto',
+                height: 'auto'
+              }}
+            />
           </div>
           
           <h1 className="text-2xl font-bold mb-2">562 Tires Corp</h1>
