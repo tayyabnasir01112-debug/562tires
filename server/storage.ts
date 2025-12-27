@@ -434,17 +434,10 @@ export class DatabaseStorage implements IStorage {
 
       revenue += parseFloat(sale.grandTotal);
 
-      // Calculate COGS
+      // Calculate COGS - use stored costPrice from saleItems
       for (const item of items) {
-        if (item.productId !== null) {
-          const [product] = await db.select()
-            .from(products)
-            .where(eq(products.id, item.productId));
-          
-          if (product) {
-            cogs += parseFloat(product.costPrice) * item.quantity;
-          }
-        }
+        const itemCostPrice = parseFloat(item.costPrice || "0");
+        cogs += itemCostPrice * item.quantity;
       }
     }
 
