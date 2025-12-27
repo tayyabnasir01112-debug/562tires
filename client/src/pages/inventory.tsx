@@ -203,10 +203,25 @@ export default function Inventory() {
     queryKey: ["/api/products"],
   });
 
-  const { data: categories, refetch: refetchCategories } = useQuery<Category[]>({
+  // Default categories as fallback
+  const DEFAULT_CATEGORIES: Category[] = [
+    { id: 1, name: "Tires", description: "All types of tires" },
+    { id: 2, name: "Wheels", description: "Wheels and rims" },
+    { id: 3, name: "Tire Parts", description: "Accessories and parts for tires" },
+  ];
+
+  const { data: categories, refetch: refetchCategories, error: categoriesError } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
     staleTime: 0, // Always refetch to ensure categories are up to date
+    retry: 3, // Retry 3 times on failure
+    refetchOnMount: true, // Always refetch when component mounts
+    onError: (err) => {
+      console.error("Failed to load categories:", err);
+    },
   });
+
+  // Use default categories if query fails or returns empty
+  const displayCategories = (categories && categories.length > 0) ? categories : DEFAULT_CATEGORIES;
 
   const deleteMutation = useMutation({
     mutationFn: async (product: Product) => {
@@ -455,7 +470,7 @@ export default function Inventory() {
           </DialogHeader>
           <ProductForm
             product={editingProduct}
-            categories={categories || []}
+            categories={displayCategories}
             onClose={handleFormClose}
           />
         </DialogContent>
