@@ -121,6 +121,25 @@ export async function registerRoutes(
     }
   });
 
+  // Manual seed endpoint to recreate default categories
+  app.post("/api/categories/seed", async (req, res) => {
+    try {
+      await ensureDefaultCategories();
+      const categories = await storage.getCategories();
+      res.json({ 
+        message: "Default categories ensured", 
+        categories,
+        count: categories.length 
+      });
+    } catch (error) {
+      console.error("Error seeding categories:", error);
+      res.status(500).json({ 
+        message: "Failed to seed categories", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Products
   app.get("/api/products", async (req, res) => {
     try {
