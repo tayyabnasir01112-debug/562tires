@@ -92,15 +92,35 @@ export async function registerRoutes(
     try {
       // Always ensure default categories exist before returning
       await ensureDefaultCategories();
-      const categories = await storage.getCategories();
-      // If no categories exist after ensuring, something went wrong - log it
+      let categories = await storage.getCategories();
+      
+      // If no categories exist after ensuring, create them directly
       if (categories.length === 0) {
-        console.warn("⚠️ No categories found after ensuring defaults - this might indicate a database issue");
+        console.warn("⚠️ No categories found, creating defaults directly...");
+        for (const cat of DEFAULT_CATEGORIES) {
+          try {
+            await storage.createCategory(cat);
+            console.log(`✅ Created category: ${cat.name}`);
+          } catch (err: any) {
+            console.error(`❌ Failed to create ${cat.name}:`, err);
+          }
+        }
+        // Fetch again after creating
+        categories = await storage.getCategories();
       }
+      
+      // If still no categories, return defaults as fallback (shouldn't happen)
+      if (categories.length === 0) {
+        console.error("❌ CRITICAL: No categories in database after all attempts");
+        res.json(DEFAULT_CATEGORIES.map((cat, idx) => ({ id: idx + 1, ...cat })));
+        return;
+      }
+      
       res.json(categories);
     } catch (error) {
       console.error("❌ Error in /api/categories:", error);
-      res.status(500).json({ message: "Failed to fetch categories", error: error instanceof Error ? error.message : String(error) });
+      // Return defaults as fallback even on error
+      res.json(DEFAULT_CATEGORIES.map((cat, idx) => ({ id: idx + 1, ...cat })));
     }
   });
 
