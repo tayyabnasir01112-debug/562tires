@@ -68,6 +68,7 @@ import {
   Receipt,
   PackagePlus,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { Product } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
@@ -111,7 +112,8 @@ export default function NewSale() {
     name: "",
     price: "",
     tax: "0",
-    quantity: "1",
+    quantity: "",
+    applySalesTax: false,
   });
 
   const { data: products } = useQuery<Product[]>({
@@ -288,7 +290,11 @@ export default function NewSale() {
       return;
     }
 
-    const quantity = parseInt(customItemForm.quantity) || 1;
+    // Quantity is optional, default to 1 if not provided
+    const quantity = customItemForm.quantity.trim() === "" 
+      ? 1 
+      : parseInt(customItemForm.quantity) || 1;
+    
     if (quantity < 1) {
       toast({
         title: "Error",
@@ -298,8 +304,17 @@ export default function NewSale() {
       return;
     }
 
-    const tax = parseFloat(customItemForm.tax) || 0;
-    if (tax < 0) {
+    // Calculate per-item tax based on toggle
+    let perItemTax = 0;
+    if (customItemForm.applySalesTax) {
+      // Apply global sales tax rate to the unit price
+      perItemTax = (price * globalTaxRate) / 100;
+    } else {
+      // Use manual tax if provided
+      perItemTax = parseFloat(customItemForm.tax) || 0;
+    }
+
+    if (perItemTax < 0) {
       toast({
         title: "Error",
         description: "Tax cannot be negative",
@@ -314,7 +329,7 @@ export default function NewSale() {
       productSku: "CUSTOM",
       quantity: quantity,
       unitPrice: price.toFixed(2),
-      perItemTax: tax.toFixed(2),
+      perItemTax: perItemTax.toFixed(2),
       maxQuantity: 999999, // No limit for custom items
       categoryId: undefined,
       condition: undefined,
@@ -324,7 +339,8 @@ export default function NewSale() {
       name: "",
       price: "",
       tax: "0",
-      quantity: "1",
+      quantity: "",
+      applySalesTax: false,
     });
     setCustomItemOpen(false);
   };
@@ -919,7 +935,7 @@ export default function NewSale() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Quantity *</label>
+                <label className="text-sm font-medium">Quantity (optional)</label>
                 <Input
                   type="number"
                   min="1"
@@ -931,26 +947,46 @@ export default function NewSale() {
                   className="font-mono"
                   data-testid="input-custom-item-quantity"
                 />
+                <p className="text-xs text-muted-foreground">Defaults to 1 if not specified</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Per-Item Tax (optional)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  $
-                </span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={customItemForm.tax}
-                  onChange={(e) =>
-                    setCustomItemForm({ ...customItemForm, tax: e.target.value })
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium">Apply Sales Tax</label>
+                  <p className="text-xs text-muted-foreground">
+                    Apply {globalTaxRate}% sales tax to this item
+                  </p>
+                </div>
+                <Switch
+                  checked={customItemForm.applySalesTax}
+                  onCheckedChange={(checked) =>
+                    setCustomItemForm({ ...customItemForm, applySalesTax: checked })
                   }
-                  className="pl-7 font-mono"
-                  data-testid="input-custom-item-tax"
+                  data-testid="switch-apply-sales-tax"
                 />
               </div>
+              {!customItemForm.applySalesTax && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Per-Item Tax (optional)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={customItemForm.tax}
+                      onChange={(e) =>
+                        setCustomItemForm({ ...customItemForm, tax: e.target.value })
+                      }
+                      className="pl-7 font-mono"
+                      data-testid="input-custom-item-tax"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -962,7 +998,8 @@ export default function NewSale() {
                   name: "",
                   price: "",
                   tax: "0",
-                  quantity: "1",
+                  quantity: "",
+                  applySalesTax: false,
                 });
               }}
             >
