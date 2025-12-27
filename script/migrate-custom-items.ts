@@ -1,5 +1,6 @@
-import { sql } from "drizzle-orm";
-import { pool } from "../server/db";
+import pg from "pg";
+
+const { Pool } = pg;
 
 async function migrate() {
   if (!process.env.DATABASE_URL) {
@@ -7,11 +8,13 @@ async function migrate() {
     return;
   }
 
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   console.log("Running migration: Make productId nullable in sale_items table...");
 
   try {
     // Check if column is already nullable
-    const result = await pool.query(sql`
+    const result = await pool.query(`
       SELECT is_nullable 
       FROM information_schema.columns 
       WHERE table_name = 'sale_items' 
@@ -24,7 +27,7 @@ async function migrate() {
     }
 
     // Alter the column to allow NULL values
-    await pool.query(sql`
+    await pool.query(`
       ALTER TABLE sale_items 
       ALTER COLUMN product_id DROP NOT NULL;
     `);
