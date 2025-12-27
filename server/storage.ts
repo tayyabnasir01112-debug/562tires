@@ -184,8 +184,10 @@ export class DatabaseStorage implements IStorage {
     // Insert sale items
     for (const item of items) {
       await db.insert(saleItems).values({ ...item, saleId: sale.id });
-      // Deduct inventory
-      await this.updateProductQuantity(item.productId, -item.quantity);
+      // Deduct inventory (skip for custom items where productId is null)
+      if (item.productId !== null && item.productId !== undefined) {
+        await this.updateProductQuantity(item.productId, -item.quantity);
+      }
     }
 
     return sale;

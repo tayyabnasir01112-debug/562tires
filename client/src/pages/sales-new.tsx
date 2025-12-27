@@ -40,6 +40,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -59,6 +66,7 @@ import {
   User,
   ShoppingCart,
   Receipt,
+  PackagePlus,
 } from "lucide-react";
 import type { Product } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -98,6 +106,13 @@ export default function NewSale() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [customItemOpen, setCustomItemOpen] = useState(false);
+  const [customItemForm, setCustomItemForm] = useState({
+    name: "",
+    price: "",
+    tax: "0",
+    quantity: "1",
+  });
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -159,8 +174,15 @@ export default function NewSale() {
 
   const createSaleMutation = useMutation({
     mutationFn: async (data: SaleFormData) => {
+      // Convert -1 productId to null for custom items
+      const items = data.items.map(item => ({
+        ...item,
+        productId: item.productId === -1 ? null : item.productId,
+      }));
+      
       const payload = {
         ...data,
+        items,
         subtotal: subtotal.toFixed(2),
         globalTaxRate: globalTaxRate.toFixed(2),
         globalTaxAmount: globalTaxAmount.toFixed(2),
@@ -245,6 +267,67 @@ export default function NewSale() {
       p.isActive &&
       p.quantity > 0
   );
+
+  const addCustomItem = () => {
+    if (!customItemForm.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Product name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const price = parseFloat(customItemForm.price);
+    if (isNaN(price) || price <= 0) {
+      toast({
+        title: "Error",
+        description: "Valid price is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const quantity = parseInt(customItemForm.quantity) || 1;
+    if (quantity < 1) {
+      toast({
+        title: "Error",
+        description: "Quantity must be at least 1",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const tax = parseFloat(customItemForm.tax) || 0;
+    if (tax < 0) {
+      toast({
+        title: "Error",
+        description: "Tax cannot be negative",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    append({
+      productId: -1, // Sentinel value for custom items
+      productName: customItemForm.name.trim(),
+      productSku: "CUSTOM",
+      quantity: quantity,
+      unitPrice: price.toFixed(2),
+      perItemTax: tax.toFixed(2),
+      maxQuantity: 999999, // No limit for custom items
+      categoryId: undefined,
+      condition: undefined,
+    });
+
+    setCustomItemForm({
+      name: "",
+      price: "",
+      tax: "0",
+      quantity: "1",
+    });
+    setCustomItemOpen(false);
+  };
 
   const onSubmit = (data: SaleFormData) => {
     createSaleMutation.mutate(data);
@@ -461,17 +544,18 @@ export default function NewSale() {
                       <ShoppingCart className="h-5 w-5" />
                       Items
                     </span>
-                    <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          data-testid="button-add-item"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Item
-                        </Button>
-                      </PopoverTrigger>
+                    <div className="flex gap-2">
+                      <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid="button-add-item"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Item
+                          </Button>
+                        </PopoverTrigger>
                       <PopoverContent className="w-[400px] p-0" align="end">
                         <Command>
                           <CommandInput
@@ -505,6 +589,16 @@ export default function NewSale() {
                         </Command>
                       </PopoverContent>
                     </Popover>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCustomItemOpen(true)}
+                        data-testid="button-add-custom-item"
+                      >
+                        <PackagePlus className="h-4 w-4 mr-2" />
+                        Add Custom Item
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -540,9 +634,16 @@ export default function NewSale() {
                                 <TableCell>
                                   <div>
                                     <p className="font-medium">{field.productName}</p>
-                                    <p className="text-xs text-muted-foreground font-mono">
-                                      {field.productSku}
-                                    </p>
+                                    {field.productSku !== "CUSTOM" && (
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        {field.productSku}
+                                      </p>
+                                    )}
+                                    {field.productSku === "CUSTOM" && (
+                                      <p className="text-xs text-muted-foreground italic">
+                                        Custom Item
+                                      </p>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -555,7 +656,7 @@ export default function NewSale() {
                                           <Input
                                             type="number"
                                             min={1}
-                                            max={field.maxQuantity}
+                                            max={field.maxQuantity === 999999 ? undefined : field.maxQuantity}
                                             {...qtyField}
                                             onChange={(e) =>
                                               qtyField.onChange(parseInt(e.target.value) || 1)
@@ -778,6 +879,101 @@ export default function NewSale() {
           </div>
         </form>
       </Form>
+
+      {/* Custom Item Dialog */}
+      <Dialog open={customItemOpen} onOpenChange={setCustomItemOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Custom Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product/Service Name *</label>
+              <Input
+                placeholder="e.g., Labor, Service Fee, Custom Product"
+                value={customItemForm.name}
+                onChange={(e) =>
+                  setCustomItemForm({ ...customItemForm, name: e.target.value })
+                }
+                data-testid="input-custom-item-name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Price *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={customItemForm.price}
+                    onChange={(e) =>
+                      setCustomItemForm({ ...customItemForm, price: e.target.value })
+                    }
+                    className="pl-7 font-mono"
+                    data-testid="input-custom-item-price"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quantity *</label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="1"
+                  value={customItemForm.quantity}
+                  onChange={(e) =>
+                    setCustomItemForm({ ...customItemForm, quantity: e.target.value })
+                  }
+                  className="font-mono"
+                  data-testid="input-custom-item-quantity"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Per-Item Tax (optional)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={customItemForm.tax}
+                  onChange={(e) =>
+                    setCustomItemForm({ ...customItemForm, tax: e.target.value })
+                  }
+                  className="pl-7 font-mono"
+                  data-testid="input-custom-item-tax"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCustomItemOpen(false);
+                setCustomItemForm({
+                  name: "",
+                  price: "",
+                  tax: "0",
+                  quantity: "1",
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={addCustomItem} data-testid="button-add-custom-item-submit">
+              Add Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

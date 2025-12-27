@@ -96,7 +96,7 @@ export type Sale = typeof sales.$inferSelect;
 export const saleItems = pgTable("sale_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   saleId: integer("sale_id").references(() => sales.id).notNull(),
-  productId: integer("product_id").references(() => products.id).notNull(),
+  productId: integer("product_id").references(() => products.id), // Nullable for custom items
   productName: text("product_name").notNull(), // Snapshot at time of sale
   productSku: text("product_sku").notNull(),
   quantity: integer("quantity").notNull(),

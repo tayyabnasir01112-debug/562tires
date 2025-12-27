@@ -350,8 +350,13 @@ export async function registerRoutes(
     try {
       const { items, ...saleData } = req.body;
 
-      // Validate stock availability
+      // Validate stock availability (skip for custom items with productId -1 or null)
       for (const item of items) {
+        // Skip validation for custom items
+        if (item.productId === -1 || item.productId === null || item.productId === undefined) {
+          continue;
+        }
+        
         const product = await storage.getProduct(item.productId);
         if (!product) {
           return res.status(400).json({ message: `Product not found: ${item.productId}` });
@@ -367,12 +372,21 @@ export async function registerRoutes(
       let perItemTaxTotal = 0;
 
       for (const item of items) {
-        const product = await storage.getProduct(item.productId);
-        const category = product?.categoryId ? await storage.getCategory(product.categoryId) : undefined;
+        // Handle custom items (productId -1 or null)
+        const isCustomItem = item.productId === -1 || item.productId === null || item.productId === undefined;
+        
+        let product = null;
+        let category = undefined;
+        if (!isCustomItem) {
+          product = await storage.getProduct(item.productId);
+          category = product?.categoryId ? await storage.getCategory(product.categoryId) : undefined;
+        }
 
         const perItemTax =
           item.perItemTax && item.perItemTax !== ""
             ? parseFloat(item.perItemTax)
+            : isCustomItem
+            ? parseFloat(item.perItemTax || "0")
             : detectPerItemTax(product, category);
 
         const lineTotal = parseFloat(item.unitPrice) * item.quantity;
@@ -380,7 +394,7 @@ export async function registerRoutes(
         perItemTaxTotal += lineTaxTotal;
 
         saleItems.push({
-          productId: item.productId,
+          productId: isCustomItem ? null : item.productId,
           productName: item.productName,
           productSku: item.productSku,
           quantity: item.quantity,
