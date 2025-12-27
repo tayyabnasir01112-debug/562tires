@@ -13,6 +13,7 @@ import Inventory from "@/pages/inventory";
 import NewSale from "@/pages/sales-new";
 import SalesHistory from "@/pages/sales-history";
 import SaleDetail from "@/pages/sale-detail";
+import Expenses from "@/pages/expenses";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import Receipt from "@/pages/receipt";
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/sales/new" component={NewSale} />
       <Route path="/sales/:id" component={SaleDetail} />
       <Route path="/sales" component={SalesHistory} />
+      <Route path="/expenses" component={Expenses} />
       <Route path="/receipt/:id" component={Receipt} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />

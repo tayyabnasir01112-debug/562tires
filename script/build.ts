@@ -1,7 +1,8 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
-import { migrate } from "./migrate-custom-items.js";
+import { migrate as migrateCustomItems } from "./migrate-custom-items.js";
+import { migrate as migrateExpenses } from "./migrate-expenses.js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -36,11 +37,17 @@ const allowlist = [
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
-  // Run database migration if DATABASE_URL is available
+  // Run database migrations if DATABASE_URL is available
   try {
-    await migrate();
+    await migrateCustomItems();
   } catch (err) {
-    console.log("Migration skipped or failed (non-blocking):", err);
+    console.log("Custom items migration skipped or failed (non-blocking):", err);
+  }
+  
+  try {
+    await migrateExpenses();
+  } catch (err) {
+    console.log("Expenses migration skipped or failed (non-blocking):", err);
   }
 
   console.log("building client...");

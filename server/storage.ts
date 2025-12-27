@@ -5,8 +5,9 @@ import {
   type Sale, type InsertSale,
   type SaleItem, type InsertSaleItem,
   type Settings, type InsertSettings,
+  type Expense, type InsertExpense,
   type SaleWithItems,
-  users, products, categories, sales, saleItems, settings
+  users, products, categories, sales, saleItems, settings, expenses
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, lte, gte, desc, sql, asc } from "drizzle-orm";
@@ -55,6 +56,13 @@ export interface IStorage {
     weekRevenue: string;
     monthRevenue: string;
   }>;
+  
+  // Expenses
+  getExpenses(): Promise<Expense[]>;
+  getExpense(id: number): Promise<Expense | undefined>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  deleteExpense(id: number): Promise<boolean>;
+  getExpensesByDateRange(startDate: Date, endDate: Date): Promise<Expense[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -266,6 +274,38 @@ export class DatabaseStorage implements IStorage {
       weekRevenue: weekRevenue.toFixed(2),
       monthRevenue: monthRevenue.toFixed(2),
     };
+  }
+
+  // Expenses
+  async getExpenses(): Promise<Expense[]> {
+    return db.select().from(expenses).orderBy(desc(expenses.expenseDate));
+  }
+
+  async getExpense(id: number): Promise<Expense | undefined> {
+    const [expense] = await db.select().from(expenses).where(eq(expenses.id, id));
+    return expense || undefined;
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const [created] = await db.insert(expenses).values(expense).returning();
+    return created;
+  }
+
+  async deleteExpense(id: number): Promise<boolean> {
+    const result = await db.delete(expenses).where(eq(expenses.id, id));
+    return result.rowCount !== undefined && result.rowCount > 0;
+  }
+
+  async getExpensesByDateRange(startDate: Date, endDate: Date): Promise<Expense[]> {
+    return db.select()
+      .from(expenses)
+      .where(
+        and(
+          gte(expenses.expenseDate, startDate),
+          lte(expenses.expenseDate, endDate)
+        )
+      )
+      .orderBy(desc(expenses.expenseDate));
   }
 }
 

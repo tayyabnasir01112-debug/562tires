@@ -5,7 +5,7 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { insertProductSchema, insertCategorySchema, saleFormSchema } from "@shared/schema";
+import { insertProductSchema, insertCategorySchema, saleFormSchema, insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 
@@ -288,6 +288,44 @@ export async function registerRoutes(
       res.json(sales);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch recent sales" });
+    }
+  });
+
+  // Expenses
+  app.get("/api/expenses", async (req, res) => {
+    try {
+      const expenses = await storage.getExpenses();
+      res.json(expenses);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch expenses" });
+    }
+  });
+
+  app.post("/api/expenses", async (req, res) => {
+    try {
+      const { expenseDate, ...expenseData } = req.body;
+      const validated = insertExpenseSchema.parse({
+        ...expenseData,
+        expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
+      });
+      const expense = await storage.createExpense(validated);
+      res.status(201).json(expense);
+    } catch (error) {
+      console.error("Expense creation error:", error);
+      res.status(500).json({ message: "Failed to create expense" });
+    }
+  });
+
+  app.delete("/api/expenses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteExpense(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete expense" });
     }
   });
 

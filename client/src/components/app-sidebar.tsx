@@ -7,6 +7,7 @@ import {
   Settings,
   FileText,
   Circle,
+  DollarSign,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,6 +27,7 @@ const menuItems = [
   { title: "Inventory", url: "/inventory", icon: Package },
   { title: "New Sale", url: "/sales/new", icon: ShoppingCart },
   { title: "Sales History", url: "/sales", icon: FileText },
+  { title: "Expenses", url: "/expenses", icon: DollarSign },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

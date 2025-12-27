@@ -182,3 +182,19 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Expenses (daily store expenses)
+export const expenses = pgTable("expenses", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  description: text("description").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  category: text("category"), // e.g., "Supplies", "Utilities", "Rent", "Other"
+  paymentMethod: text("payment_method"), // cash, card, check
+  notes: text("notes"),
+  expenseDate: timestamp("expense_date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true });
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
