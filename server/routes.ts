@@ -19,12 +19,23 @@ const DEFAULT_CATEGORIES = [
 const DEFAULT_TIRE_FEE = 1.75;
 
 async function ensureDefaultCategories() {
-  const existing = await storage.getCategories();
-  const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
-  for (const cat of DEFAULT_CATEGORIES) {
-    if (!existingNames.has(cat.name.toLowerCase())) {
-      await storage.createCategory(cat);
+  try {
+    const existing = await storage.getCategories();
+    const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
+    for (const cat of DEFAULT_CATEGORIES) {
+      if (!existingNames.has(cat.name.toLowerCase())) {
+        try {
+          await storage.createCategory(cat);
+          console.log(`Created default category: ${cat.name}`);
+        } catch (error) {
+          console.error(`Failed to create category ${cat.name}:`, error);
+          // Continue with other categories even if one fails
+        }
+      }
     }
+  } catch (error) {
+    console.error("Error ensuring default categories:", error);
+    // Don't throw - we want the app to start even if categories fail
   }
 }
 
@@ -59,6 +70,7 @@ export async function registerRoutes(
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
+      // Always ensure default categories exist before returning
       await ensureDefaultCategories();
       const categories = await storage.getCategories();
       res.json(categories);
