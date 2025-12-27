@@ -181,7 +181,11 @@ export default function NewSale() {
     return sum + (parseFloat(item.unitPrice || "0") * item.quantity);
   }, 0);
   
-  const taxableAmount = taxableSubtotal + laborCost - discount;
+  // Only apply tax if there are taxable items
+  // If all items are non-taxable, no tax should be applied (including on labor)
+  const taxableAmount = taxableSubtotal > 0 
+    ? taxableSubtotal + laborCost - discount
+    : 0;
   const globalTaxAmount = taxableAmount * (globalTaxRate / 100);
   const grandTotal = subtotal + globalTaxAmount + perItemTaxTotal;
 
