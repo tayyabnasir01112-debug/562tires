@@ -25,7 +25,7 @@ export const products = pgTable("products", {
   sku: text("sku").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
-  categoryId: integer("category_id").references(() => categories.id),
+  categoryId: integer("category_id").references(() => categories.id), // Nullable by default
   brand: text("brand"),
   size: text("size"), // e.g., "225/65R17" for tires
   quantity: integer("quantity").notNull().default(0),
@@ -96,7 +96,7 @@ export type Sale = typeof sales.$inferSelect;
 export const saleItems = pgTable("sale_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   saleId: integer("sale_id").references(() => sales.id).notNull(),
-  productId: integer("product_id").nullable().references(() => products.id), // Nullable for custom items
+  productId: integer("product_id").references(() => products.id), // Nullable for custom items (no .notNull() means nullable)
   productName: text("product_name").notNull(), // Snapshot at time of sale
   productSku: text("product_sku").notNull(),
   quantity: integer("quantity").notNull(),
