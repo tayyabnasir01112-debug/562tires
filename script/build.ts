@@ -3,6 +3,7 @@ import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 import { migrate as migrateCustomItems } from "./migrate-custom-items.js";
 import { migrate as migrateExpenses } from "./migrate-expenses.js";
+import { migrate as migrateSaleItemsFields } from "./migrate-sale-items-fields.js";
 import { seedDefaultCategories } from "./seed-default-categories.js";
 
 // server deps to bundle to reduce openat(2) syscalls
@@ -49,6 +50,12 @@ async function buildAll() {
     await migrateExpenses();
   } catch (err) {
     console.log("Expenses migration skipped or failed (non-blocking):", err);
+  }
+
+  try {
+    await migrateSaleItemsFields();
+  } catch (err) {
+    console.log("Sale items fields migration skipped or failed (non-blocking):", err);
   }
 
   // Seed default categories
