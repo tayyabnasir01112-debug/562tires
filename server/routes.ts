@@ -634,6 +634,33 @@ export async function registerRoutes(
     }
   });
 
+  // Analytics - Today's Activity
+  app.get("/api/analytics/today", async (req, res) => {
+    try {
+      const activity = await storage.getTodayActivity();
+      res.json(activity);
+    } catch (error) {
+      console.error("Today activity error:", error);
+      res.status(500).json({ message: "Failed to fetch today's activity" });
+    }
+  });
+
+  // Analytics - Comparison Data
+  app.get("/api/analytics/comparison", async (req, res) => {
+    try {
+      const { date } = req.query;
+      if (!date) {
+        return res.status(400).json({ message: "Date parameter is required" });
+      }
+      const targetDate = new Date(date as string);
+      const comparison = await storage.getComparisonData(targetDate);
+      res.json(comparison);
+    } catch (error) {
+      console.error("Comparison data error:", error);
+      res.status(500).json({ message: "Failed to fetch comparison data" });
+    }
+  });
+
   // Analytics
   app.get("/api/analytics/sales", async (req, res) => {
     try {

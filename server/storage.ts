@@ -63,6 +63,24 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   deleteExpense(id: number): Promise<boolean>;
   getExpensesByDateRange(startDate: Date, endDate: Date): Promise<Expense[]>;
+  
+  // Analytics
+  getTodayActivity(): Promise<{
+    sales: SaleWithItems[];
+    expenses: Expense[];
+    revenue: number;
+    expensesTotal: number;
+    cogs: number;
+    profit: number;
+  }>;
+  getComparisonData(targetDate: Date): Promise<{
+    sales: SaleWithItems[];
+    expenses: Expense[];
+    revenue: number;
+    expensesTotal: number;
+    cogs: number;
+    profit: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -306,6 +324,160 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(expenses.expenseDate));
+  }
+
+  // Analytics - Get today's activity
+  async getTodayActivity(): Promise<{
+    sales: SaleWithItems[];
+    expenses: Expense[];
+    revenue: number;
+    expensesTotal: number;
+    cogs: number;
+    profit: number;
+  }> {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setDate(endOfToday.getDate() + 1);
+
+    // Get today's sales
+    const todaySales = await db.select()
+      .from(sales)
+      .where(
+        and(
+          gte(sales.saleDate, startOfToday),
+          lte(sales.saleDate, endOfToday)
+        )
+      )
+      .orderBy(desc(sales.saleDate));
+
+    // Get sales with items
+    const salesWithItems: SaleWithItems[] = [];
+    let revenue = 0;
+    let cogs = 0;
+
+    for (const sale of todaySales) {
+      const items = await db.select()
+        .from(saleItems)
+        .where(eq(saleItems.saleId, sale.id));
+      
+      salesWithItems.push({ ...sale, items });
+
+      revenue += parseFloat(sale.grandTotal);
+
+      // Calculate COGS (Cost of Goods Sold)
+      for (const item of items) {
+        if (item.productId !== null) {
+          const [product] = await db.select()
+            .from(products)
+            .where(eq(products.id, item.productId));
+          
+          if (product) {
+            cogs += parseFloat(product.costPrice) * item.quantity;
+          }
+        }
+        // Custom items (productId is null) have no COGS
+      }
+    }
+
+    // Get today's expenses
+    const todayExpenses = await db.select()
+      .from(expenses)
+      .where(
+        and(
+          gte(expenses.expenseDate, startOfToday),
+          lte(expenses.expenseDate, endOfToday)
+        )
+      )
+      .orderBy(desc(expenses.expenseDate));
+
+    const expensesTotal = todayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const profit = revenue - cogs - expensesTotal;
+
+    return {
+      sales: salesWithItems,
+      expenses: todayExpenses,
+      revenue,
+      expensesTotal,
+      cogs,
+      profit,
+    };
+  }
+
+  // Analytics - Get comparison data for a specific date
+  async getComparisonData(targetDate: Date): Promise<{
+    sales: SaleWithItems[];
+    expenses: Expense[];
+    revenue: number;
+    expensesTotal: number;
+    cogs: number;
+    profit: number;
+  }> {
+    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    // Get sales for the target date
+    const daySales = await db.select()
+      .from(sales)
+      .where(
+        and(
+          gte(sales.saleDate, startOfDay),
+          lte(sales.saleDate, endOfDay)
+        )
+      )
+      .orderBy(desc(sales.saleDate));
+
+    // Get sales with items
+    const salesWithItems: SaleWithItems[] = [];
+    let revenue = 0;
+    let cogs = 0;
+
+    for (const sale of daySales) {
+      const items = await db.select()
+        .from(saleItems)
+        .where(eq(saleItems.saleId, sale.id));
+      
+      salesWithItems.push({ ...sale, items });
+
+      revenue += parseFloat(sale.grandTotal);
+
+      // Calculate COGS
+      for (const item of items) {
+        if (item.productId !== null) {
+          const [product] = await db.select()
+            .from(products)
+            .where(eq(products.id, item.productId));
+          
+          if (product) {
+            cogs += parseFloat(product.costPrice) * item.quantity;
+          }
+        }
+      }
+    }
+
+    // Get expenses for the target date
+    const dayExpenses = await db.select()
+      .from(expenses)
+      .where(
+        and(
+          gte(expenses.expenseDate, startOfDay),
+          lte(expenses.expenseDate, endOfDay)
+        )
+      )
+      .orderBy(desc(expenses.expenseDate));
+
+    const expensesTotal = dayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const profit = revenue - cogs - expensesTotal;
+
+    return {
+      sales: salesWithItems,
+      expenses: dayExpenses,
+      revenue,
+      expensesTotal,
+      cogs,
+      profit,
+    };
   }
 }
 
