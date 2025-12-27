@@ -112,7 +112,6 @@ export default function NewSale() {
   const [customItemForm, setCustomItemForm] = useState({
     name: "",
     price: "",
-    tax: "0",
     quantity: "",
     applySalesTax: false,
   });
@@ -316,32 +315,15 @@ export default function NewSale() {
       return;
     }
 
-    // Calculate per-item tax based on toggle
-    let perItemTax = 0;
-    if (customItemForm.applySalesTax) {
-      // Apply global sales tax rate to the unit price
-      perItemTax = (price * globalTaxRate) / 100;
-    } else {
-      // Use manual tax if provided
-      perItemTax = parseFloat(customItemForm.tax) || 0;
-    }
-
-    if (perItemTax < 0) {
-      toast({
-        title: "Error",
-        description: "Tax cannot be negative",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Custom items don't have per-item tax (California tire fee only applies to new tires)
+    // Only sales tax toggle controls whether item is taxable
     append({
       productId: -1, // Sentinel value for custom items
       productName: customItemForm.name.trim(),
       productSku: "CUSTOM",
       quantity: quantity,
       unitPrice: price.toFixed(2),
-      perItemTax: perItemTax.toFixed(2),
+      perItemTax: "0", // No per-item tax for custom items
       maxQuantity: 999999, // No limit for custom items
       categoryId: undefined,
       condition: undefined,
@@ -351,7 +333,6 @@ export default function NewSale() {
     setCustomItemForm({
       name: "",
       price: "",
-      tax: "0",
       quantity: "",
       applySalesTax: false,
     });
@@ -979,27 +960,6 @@ export default function NewSale() {
                   data-testid="switch-apply-sales-tax"
                 />
               </div>
-              {!customItemForm.applySalesTax && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Per-Item Tax (optional)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={customItemForm.tax}
-                      onChange={(e) =>
-                        setCustomItemForm({ ...customItemForm, tax: e.target.value })
-                      }
-                      className="pl-7 font-mono"
-                      data-testid="input-custom-item-tax"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <DialogFooter>
@@ -1010,7 +970,6 @@ export default function NewSale() {
                 setCustomItemForm({
                   name: "",
                   price: "",
-                  tax: "0",
                   quantity: "",
                   applySalesTax: false,
                 });
