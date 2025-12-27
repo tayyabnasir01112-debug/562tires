@@ -486,7 +486,7 @@ export async function registerRoutes(
 
       autoTable(doc, {
         startY: 90,
-        head: [["Item", "SKU", "Qty", "Unit Price", "Item Tax", "Total"]],
+        head: [["Item", "SKU", "Qty", "Unit Price", "California Tire Fee", "Total"]],
         body: tableData,
         theme: "striped",
         headStyles: { fillColor: [51, 51, 51] },
@@ -536,7 +536,7 @@ export async function registerRoutes(
       );
 
       if (parseFloat(sale.perItemTaxTotal || "0") > 0) {
-        doc.text("Per-Item Taxes:", totalsX, finalY + 18 + discountOffset + laborOffset);
+        doc.text("California Tire Fee:", totalsX, finalY + 18 + discountOffset + laborOffset);
         doc.text(`$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`, pageWidth - 20, finalY + 18 + discountOffset + laborOffset, { align: "right" });
       }
 

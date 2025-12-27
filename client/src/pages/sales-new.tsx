@@ -630,7 +630,7 @@ export default function NewSale() {
                             <TableHead>Product</TableHead>
                             <TableHead className="w-[100px]">Qty</TableHead>
                             <TableHead className="text-right">Unit Price</TableHead>
-                            <TableHead className="text-right">Per-Item Tax</TableHead>
+                            <TableHead className="text-right">California Tire Fee</TableHead>
                             <TableHead className="text-right">Line Total</TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                           </TableRow>
@@ -856,7 +856,7 @@ export default function NewSale() {
                       </div>
                       {perItemTaxTotal > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Per-Item Taxes</span>
+                          <span className="text-muted-foreground">California Tire Fee</span>
                           <span className="font-mono">${perItemTaxTotal.toFixed(2)}</span>
                         </div>
                       )}

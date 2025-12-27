@@ -227,7 +227,7 @@ export default function SaleDetail() {
                   <TableHead>Item</TableHead>
                   <TableHead className="text-center">Qty</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Per-Item Tax</TableHead>
+                  <TableHead className="text-right">California Tire Fee</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -294,7 +294,7 @@ export default function SaleDetail() {
               </div>
               {parseFloat(sale.perItemTaxTotal || "0") > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Per-Item Taxes</span>
+                  <span className="text-muted-foreground">California Tire Fee</span>
                   <span className="font-mono">
                     ${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}
                   </span>
