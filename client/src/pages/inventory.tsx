@@ -203,8 +203,9 @@ export default function Inventory() {
     queryKey: ["/api/products"],
   });
 
-  const { data: categories } = useQuery<Category[]>({
+  const { data: categories, refetch: refetchCategories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    staleTime: 0, // Always refetch to ensure categories are up to date
   });
 
   const deleteMutation = useMutation({

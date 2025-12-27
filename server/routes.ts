@@ -22,19 +22,24 @@ async function ensureDefaultCategories() {
   try {
     const existing = await storage.getCategories();
     const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
+    let createdCount = 0;
     for (const cat of DEFAULT_CATEGORIES) {
       if (!existingNames.has(cat.name.toLowerCase())) {
         try {
           await storage.createCategory(cat);
-          console.log(`Created default category: ${cat.name}`);
+          console.log(`✅ Created default category: ${cat.name}`);
+          createdCount++;
         } catch (error) {
-          console.error(`Failed to create category ${cat.name}:`, error);
+          console.error(`❌ Failed to create category ${cat.name}:`, error);
           // Continue with other categories even if one fails
         }
       }
     }
+    if (createdCount > 0) {
+      console.log(`✅ Ensured default categories exist (created ${createdCount} new ones)`);
+    }
   } catch (error) {
-    console.error("Error ensuring default categories:", error);
+    console.error("❌ Error ensuring default categories:", error);
     // Don't throw - we want the app to start even if categories fail
   }
 }
@@ -73,9 +78,14 @@ export async function registerRoutes(
       // Always ensure default categories exist before returning
       await ensureDefaultCategories();
       const categories = await storage.getCategories();
+      // If no categories exist after ensuring, something went wrong - log it
+      if (categories.length === 0) {
+        console.warn("⚠️ No categories found after ensuring defaults - this might indicate a database issue");
+      }
       res.json(categories);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch categories" });
+      console.error("❌ Error in /api/categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories", error: error instanceof Error ? error.message : String(error) });
     }
   });
 
