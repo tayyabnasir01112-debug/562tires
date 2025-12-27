@@ -8,6 +8,8 @@ import autoTable from "jspdf-autotable";
 import { insertProductSchema, insertCategorySchema, saleFormSchema, insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { saleItems, sales, products, expenses } from "@shared/schema";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -536,9 +538,17 @@ export async function registerRoutes(
       }, saleItems);
 
       res.status(201).json(sale);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sale creation error:", error);
-      res.status(500).json({ message: "Failed to create sale" });
+      console.error("Error details:", {
+        message: error?.message,
+        stack: error?.stack,
+        code: error?.code,
+      });
+      res.status(500).json({ 
+        message: "Failed to create sale",
+        error: error?.message || String(error)
+      });
     }
   });
 
