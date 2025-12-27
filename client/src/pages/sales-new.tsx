@@ -96,6 +96,7 @@ const saleFormSchema = z.object({
     maxQuantity: z.number(),
     categoryId: z.number().optional(),
     condition: z.string().optional(),
+    isTaxable: z.boolean().optional(), // For custom items - whether to include in global tax
   })).min(1, "At least one item is required"),
 });
 
@@ -170,9 +171,20 @@ export default function NewSale() {
 
   const discount = parseFloat(watchedDiscount || "0");
   const laborCost = parseFloat(watchedLabor || "0");
-  const taxableAmount = subtotal + laborCost - discount;
+  
+  // Calculate taxable amount - exclude non-taxable items (custom items with toggle off)
+  const taxableSubtotal = watchedItems.reduce((sum, item) => {
+    // If isTaxable is explicitly false, exclude from taxable amount
+    // Default to true for regular items (undefined means taxable)
+    if (item.isTaxable === false) {
+      return sum;
+    }
+    return sum + (parseFloat(item.unitPrice || "0") * item.quantity);
+  }, 0);
+  
+  const taxableAmount = taxableSubtotal + laborCost - discount;
   const globalTaxAmount = taxableAmount * (globalTaxRate / 100);
-  const grandTotal = taxableAmount + globalTaxAmount + perItemTaxTotal;
+  const grandTotal = subtotal + globalTaxAmount + perItemTaxTotal;
 
   const createSaleMutation = useMutation({
     mutationFn: async (data: SaleFormData) => {
@@ -333,6 +345,7 @@ export default function NewSale() {
       maxQuantity: 999999, // No limit for custom items
       categoryId: undefined,
       condition: undefined,
+      isTaxable: customItemForm.applySalesTax, // Include in global tax only if toggle is on
     });
 
     setCustomItemForm({
