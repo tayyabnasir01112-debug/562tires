@@ -187,7 +187,7 @@ export default function NewSale() {
     ? taxableSubtotal + laborCost - discount
     : 0;
   const globalTaxAmount = taxableAmount * (globalTaxRate / 100);
-  const grandTotal = subtotal + globalTaxAmount + perItemTaxTotal;
+  const grandTotal = subtotal + laborCost - discount + globalTaxAmount + perItemTaxTotal;
 
   const createSaleMutation = useMutation({
     mutationFn: async (data: SaleFormData) => {
@@ -834,6 +834,12 @@ export default function NewSale() {
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="font-mono">${subtotal.toFixed(2)}</span>
                       </div>
+                      {laborCost > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Labor</span>
+                          <span className="font-mono">${laborCost.toFixed(2)}</span>
+                        </div>
+                      )}
                       {discount > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Discount</span>
