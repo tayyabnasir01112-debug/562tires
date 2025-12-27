@@ -29,14 +29,29 @@ async function ensureDefaultCategories() {
           await storage.createCategory(cat);
           console.log(`✅ Created default category: ${cat.name}`);
           createdCount++;
-        } catch (error) {
-          console.error(`❌ Failed to create category ${cat.name}:`, error);
+        } catch (error: any) {
+          // If it's a duplicate key error, that's okay - category already exists
+          if (error?.code !== '23505' && error?.message?.includes('duplicate') === false) {
+            console.error(`❌ Failed to create category ${cat.name}:`, error);
+          }
           // Continue with other categories even if one fails
         }
       }
     }
     if (createdCount > 0) {
       console.log(`✅ Ensured default categories exist (created ${createdCount} new ones)`);
+    } else if (existing.length === 0) {
+      // If no categories exist at all, try to create them again (might be a timing issue)
+      console.log("⚠️  No categories found, attempting to create defaults...");
+      for (const cat of DEFAULT_CATEGORIES) {
+        try {
+          await storage.createCategory(cat);
+          console.log(`✅ Created default category: ${cat.name}`);
+          createdCount++;
+        } catch (error: any) {
+          console.error(`❌ Failed to create category ${cat.name}:`, error);
+        }
+      }
     }
   } catch (error) {
     console.error("❌ Error ensuring default categories:", error);
