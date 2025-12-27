@@ -727,6 +727,38 @@ export async function registerRoutes(
     }
   });
 
+  // Admin - Clear all data (products, sales, expenses) but keep categories
+  app.post("/api/admin/clear-data", async (req, res) => {
+    try {
+      // Delete sale items first (foreign key constraint)
+      await db.delete(saleItems);
+      console.log("✅ Deleted all sale items");
+
+      // Delete sales
+      await db.delete(sales);
+      console.log("✅ Deleted all sales");
+
+      // Delete products
+      await db.delete(products);
+      console.log("✅ Deleted all products");
+
+      // Delete expenses
+      await db.delete(expenses);
+      console.log("✅ Deleted all expenses");
+
+      // Categories are preserved (not deleted)
+      console.log("✅ Categories preserved");
+
+      res.json({ message: "All data cleared successfully. Categories preserved." });
+    } catch (error: any) {
+      console.error("Error clearing data:", error);
+      res.status(500).json({ 
+        message: "Failed to clear data",
+        error: error?.message || String(error)
+      });
+    }
+  });
+
   // Analytics - Today's Activity
   app.get("/api/analytics/today", async (req, res) => {
     try {
