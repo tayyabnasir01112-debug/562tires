@@ -98,7 +98,6 @@ export default function NewSale() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [productSearchOpen, setProductSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -239,15 +238,12 @@ export default function NewSale() {
       });
     }
     setProductSearchOpen(false);
-    setSearchQuery("");
   };
 
   const filteredProducts = products?.filter(
     (p) =>
       p.isActive &&
-      p.quantity > 0 &&
-      (p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+      p.quantity > 0
   );
 
   const onSubmit = (data: SaleFormData) => {
@@ -480,8 +476,6 @@ export default function NewSale() {
                         <Command>
                           <CommandInput
                             placeholder="Search products..."
-                            value={searchQuery}
-                            onValueChange={setSearchQuery}
                           />
                           <CommandList>
                             <CommandEmpty>No products found.</CommandEmpty>
@@ -489,7 +483,7 @@ export default function NewSale() {
                               {filteredProducts?.slice(0, 10).map((product) => (
                                 <CommandItem
                                   key={product.id}
-                                  value={product.sku}
+                                  value={`${product.name} ${product.sku}`}
                                   onSelect={() => addProduct(product)}
                                   className="flex items-center justify-between"
                                 >
