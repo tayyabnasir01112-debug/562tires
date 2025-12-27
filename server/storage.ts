@@ -111,7 +111,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
-    const [created] = await db.insert(categories).values(category).returning();
+    const [created] = await db.insert(categories).values(category as any).returning();
     return created;
   }
 
@@ -144,7 +144,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [created] = await db.insert(products).values(product).returning();
+    const [created] = await db.insert(products).values(product as any).returning();
     return created;
   }
 
@@ -204,12 +204,12 @@ export class DatabaseStorage implements IStorage {
     const invoiceNumber = `INV-${dateStr}-${randomSuffix}`;
 
     const [sale] = await db.insert(sales)
-      .values({ ...saleData, invoiceNumber })
+      .values({ ...saleData, invoiceNumber } as any)
       .returning();
 
     // Insert sale items
     for (const item of items) {
-      await db.insert(saleItems).values({ ...item, saleId: sale.id });
+      await db.insert(saleItems).values({ ...item, saleId: sale.id } as any);
       // Deduct inventory (skip for custom items where productId is null)
       if (item.productId !== null && item.productId !== undefined) {
         await this.updateProductQuantity(item.productId, -item.quantity);
@@ -305,7 +305,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExpense(expense: InsertExpense): Promise<Expense> {
-    const [created] = await db.insert(expenses).values(expense).returning();
+    const [created] = await db.insert(expenses).values(expense as any).returning();
     return created;
   }
 

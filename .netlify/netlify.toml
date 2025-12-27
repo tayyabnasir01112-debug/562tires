@@ -12,6 +12,7 @@ command = "npm run build"
 functions = "C:\\Users\\ts199\\Downloads\\Tyre-Flow\\Tyre-Flow\\netlify\\functions"
 
 [build.environment]
+NODE_VERSION = "20"
 
 [build.processing]
 

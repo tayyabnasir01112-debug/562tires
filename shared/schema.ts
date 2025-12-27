@@ -96,13 +96,15 @@ export type Sale = typeof sales.$inferSelect;
 export const saleItems = pgTable("sale_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   saleId: integer("sale_id").references(() => sales.id).notNull(),
-  productId: integer("product_id").references(() => products.id), // Nullable for custom items
+  productId: integer("product_id").references(() => products.id).nullable(), // Nullable for custom items
   productName: text("product_name").notNull(), // Snapshot at time of sale
   productSku: text("product_sku").notNull(),
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   perItemTax: decimal("per_item_tax", { precision: 10, scale: 2 }).default("0"),
   lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+  costPrice: decimal("cost_price", { precision: 10, scale: 2 }).notNull().default("0"), // For profit calculation
+  isTaxable: boolean("is_taxable").notNull().default(true), // Whether to include in global tax
 });
 
 export const saleItemsRelations = relations(saleItems, ({ one }) => ({
