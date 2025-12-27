@@ -507,6 +507,11 @@ export async function registerRoutes(
         const lineTaxTotal = perItemTax * item.quantity;
         perItemTaxTotal += lineTaxTotal;
 
+        // Get cost price for profit calculation
+        const costPrice = isCustomItem ? "0" : (product?.costPrice || "0");
+        // Get isTaxable from item (for custom items) or default to true for regular items
+        const isTaxable = item.isTaxable !== undefined ? item.isTaxable : true;
+
         saleItems.push({
           productId: isCustomItem ? null : item.productId,
           productName: item.productName,
@@ -515,6 +520,8 @@ export async function registerRoutes(
           unitPrice: item.unitPrice,
           perItemTax: perItemTax.toFixed(2),
           lineTotal: lineTotal.toFixed(2),
+          costPrice: costPrice,
+          isTaxable: isTaxable,
         });
       }
 
