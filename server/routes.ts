@@ -549,21 +549,44 @@ export async function registerRoutes(
       }, saleItems);
       
       // If warranty is partial, we need to update warrantyItemIds with actual sale item IDs
+      let finalSale = sale;
       if (saleData.warrantyType === "partial" && warrantyItemIndices.length > 0) {
-        const saleWithItems = await storage.getSaleWithItems(sale.id);
-        if (saleWithItems) {
-          const actualItemIds = warrantyItemIndices
-            .map((idx: number) => saleWithItems.items[idx]?.id)
-            .filter((id: number | undefined) => id !== undefined);
-          
-          // Update the sale with actual item IDs
-          await db.update(sales)
-            .set({ warrantyItemIds: JSON.stringify(actualItemIds) })
-            .where(eq(sales.id, sale.id));
+        try {
+          const saleWithItems = await storage.getSaleWithItems(sale.id);
+          if (saleWithItems) {
+            const actualItemIds = warrantyItemIndices
+              .map((idx: number) => saleWithItems.items[idx]?.id)
+              .filter((id: number | undefined) => id !== undefined);
+            
+            // Update the sale with actual item IDs
+            const [updated] = await db.update(sales)
+              .set({ warrantyItemIds: JSON.stringify(actualItemIds) })
+              .where(eq(sales.id, sale.id))
+              .returning();
+            
+            if (updated) {
+              finalSale = updated;
+            }
+          }
+        } catch (warrantyError) {
+          // Log but don't fail the sale creation if warranty update fails
+          console.error("Warning: Failed to update warranty item IDs:", warrantyError);
         }
       }
 
-      res.status(201).json(sale);
+      // Fetch the complete sale with items to return
+      try {
+        const saleWithItems = await storage.getSaleWithItems(finalSale.id);
+        if (saleWithItems) {
+          res.status(201).json(saleWithItems);
+        } else {
+          res.status(201).json(finalSale);
+        }
+      } catch (fetchError) {
+        console.error("Error fetching sale with items:", fetchError);
+        // Return the sale even if fetching with items fails
+        res.status(201).json(finalSale);
+      }
     } catch (error: any) {
       console.error("Sale creation error:", error);
       console.error("Error details:", {

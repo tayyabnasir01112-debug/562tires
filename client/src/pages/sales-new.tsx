@@ -220,7 +220,18 @@ export default function NewSale() {
       return apiRequest("POST", "/api/sales", payload);
     },
     onSuccess: async (response) => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || "Failed to create sale");
+      }
+      
       const data = await response.json();
+      
+      if (!data || !data.id) {
+        console.error("Invalid sale data received:", data);
+        throw new Error("Invalid response from server");
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -231,6 +242,7 @@ export default function NewSale() {
       navigate(`/sales/${data.id}`);
     },
     onError: (error: Error) => {
+      console.error("Sale creation error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create sale",
