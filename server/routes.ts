@@ -453,13 +453,20 @@ export async function registerRoutes(
   app.get("/api/sales/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid sale ID" });
+      }
       const sale = await storage.getSaleWithItems(id);
       if (!sale) {
         return res.status(404).json({ message: "Sale not found" });
       }
       res.json(sale);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch sale" });
+    } catch (error: any) {
+      console.error("Error fetching sale:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch sale",
+        error: error?.message || String(error)
+      });
     }
   });
 

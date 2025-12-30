@@ -41,6 +41,7 @@ import {
   Circle,
   Share2,
   Copy,
+  Edit,
 } from "lucide-react";
 import type { SaleWithItems } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -64,9 +65,10 @@ export default function SaleDetail() {
     notes: "",
   });
 
-  const { data: sale, isLoading } = useQuery<SaleWithItems>({
+  const { data: sale, isLoading, error } = useQuery<SaleWithItems>({
     queryKey: ["/api/sales", params?.id],
     enabled: !!params?.id,
+    retry: 1,
   });
 
   // Initialize edit form when sale loads
@@ -309,9 +311,9 @@ export default function SaleDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sale.items.map((item) => {
-                  const lineTotal = parseFloat(item.unitPrice) * item.quantity;
-                  const lineTax = parseFloat(item.perItemTax || "0") * item.quantity;
+                {(sale.items || []).map((item) => {
+                  const lineTotal = parseFloat(item.unitPrice || "0") * (item.quantity || 0);
+                  const lineTax = parseFloat(item.perItemTax || "0") * (item.quantity || 0);
                   
                   return (
                     <TableRow key={item.id}>

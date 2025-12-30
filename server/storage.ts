@@ -190,11 +190,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSaleWithItems(id: number): Promise<SaleWithItems | undefined> {
-    const [sale] = await db.select().from(sales).where(eq(sales.id, id));
-    if (!sale) return undefined;
-    
-    const items = await db.select().from(saleItems).where(eq(saleItems.saleId, id));
-    return { ...sale, items };
+    try {
+      const [sale] = await db.select().from(sales).where(eq(sales.id, id));
+      if (!sale) return undefined;
+      
+      const items = await db.select().from(saleItems).where(eq(saleItems.saleId, id));
+      return { ...sale, items };
+    } catch (error) {
+      console.error("Error fetching sale with items:", error);
+      throw error;
+    }
   }
 
   async createSale(saleData: InsertSale, items: InsertSaleItem[]): Promise<Sale> {
