@@ -4,6 +4,7 @@ import { rm, readFile } from "fs/promises";
 import { migrate as migrateCustomItems } from "./migrate-custom-items.js";
 import { migrate as migrateExpenses } from "./migrate-expenses.js";
 import { migrate as migrateSaleItemsFields } from "./migrate-sale-items-fields.js";
+import { migrate as migrateWarrantyPaymentFields } from "./migrate-warranty-payment-fields.js";
 import { seedDefaultCategories } from "./seed-default-categories.js";
 
 // server deps to bundle to reduce openat(2) syscalls
@@ -56,6 +57,12 @@ async function buildAll() {
     await migrateSaleItemsFields();
   } catch (err) {
     console.log("Sale items fields migration skipped or failed (non-blocking):", err);
+  }
+
+  try {
+    await migrateWarrantyPaymentFields();
+  } catch (err) {
+    console.log("Warranty and payment fields migration skipped or failed (non-blocking):", err);
   }
 
   // Seed default categories

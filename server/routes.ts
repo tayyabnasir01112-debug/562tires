@@ -10,6 +10,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { saleItems, sales, products, expenses } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -529,13 +530,38 @@ export async function registerRoutes(
 
       const laborCost = saleData.laborCost ? parseFloat(saleData.laborCost) : 0;
 
+      // Handle warranty item IDs - convert array indices to actual sale item IDs after creation
+      // For now, we'll store the indices and convert them after items are created
+      const warrantyItemIndices = saleData.warrantyItemIds || [];
+      
       const sale = await storage.createSale({
         ...saleData,
         paymentStatus: "paid",
         saleDate: new Date(),
         laborCost: laborCost.toFixed(2),
         perItemTaxTotal: perItemTaxTotal.toFixed(2),
+        cashReceived: saleData.cashReceived || null,
+        changeGiven: saleData.changeGiven || null,
+        chequeNumber: saleData.chequeNumber || null,
+        warrantyType: saleData.warrantyType || null,
+        warrantyDuration: saleData.warrantyDuration || null,
+        warrantyItemIds: warrantyItemIndices.length > 0 ? JSON.stringify(warrantyItemIndices) : null,
       }, saleItems);
+      
+      // If warranty is partial, we need to update warrantyItemIds with actual sale item IDs
+      if (saleData.warrantyType === "partial" && warrantyItemIndices.length > 0) {
+        const saleWithItems = await storage.getSaleWithItems(sale.id);
+        if (saleWithItems) {
+          const actualItemIds = warrantyItemIndices
+            .map((idx: number) => saleWithItems.items[idx]?.id)
+            .filter((id: number | undefined) => id !== undefined);
+          
+          // Update the sale with actual item IDs
+          await db.update(sales)
+            .set({ warrantyItemIds: JSON.stringify(actualItemIds) })
+            .where(eq(sales.id, sale.id));
+        }
+      }
 
       res.status(201).json(sale);
     } catch (error: any) {
@@ -547,6 +573,45 @@ export async function registerRoutes(
       });
       res.status(500).json({ 
         message: "Failed to create sale",
+        error: error?.message || String(error)
+      });
+    }
+  });
+
+  app.put("/api/sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { items, ...saleData } = req.body;
+
+      // Get existing sale
+      const existingSale = await storage.getSaleWithItems(id);
+      if (!existingSale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+
+      // Update sale data (excluding items for now)
+      const updatedSale = await storage.updateSale(id, {
+        ...saleData,
+        cashReceived: saleData.cashReceived || null,
+        changeGiven: saleData.changeGiven || null,
+        chequeNumber: saleData.chequeNumber || null,
+        warrantyType: saleData.warrantyType || null,
+        warrantyDuration: saleData.warrantyDuration || null,
+        warrantyItemIds: saleData.warrantyItemIds ? JSON.stringify(saleData.warrantyItemIds) : null,
+      });
+
+      if (!updatedSale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+
+      // If items are provided, update them (for now, we'll just update the sale metadata)
+      // Full item editing would require more complex logic to handle inventory adjustments
+      
+      res.json(updatedSale);
+    } catch (error: any) {
+      console.error("Sale update error:", error);
+      res.status(500).json({ 
+        message: "Failed to update sale",
         error: error?.message || String(error)
       });
     }
@@ -681,15 +746,50 @@ export async function registerRoutes(
       doc.text("Total:", totalsX, finalY + 30 + discountOffset + laborOffset + perItemOffset);
       doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + 30 + discountOffset + laborOffset + perItemOffset, { align: "right" });
 
-      // Payment method
+      // Payment method and details
+      let paymentY = finalY + 30 + discountOffset + laborOffset + perItemOffset;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Payment Method: ${sale.paymentMethod.toUpperCase()}`, 20, finalY + 30 + discountOffset + laborOffset + perItemOffset);
+      const paymentMethodText = sale.paymentMethod === "card" ? "Credit/Debit Card" : sale.paymentMethod === "cash" ? "Cash" : "Check";
+      doc.text(`Payment Method: ${paymentMethodText}`, 20, paymentY);
+      
+      if (sale.paymentMethod === "cash" && (sale as any).cashReceived) {
+        paymentY += 6;
+        doc.text(`Cash Received: $${parseFloat((sale as any).cashReceived || "0").toFixed(2)}`, 20, paymentY);
+        if ((sale as any).changeGiven && parseFloat((sale as any).changeGiven || "0") > 0) {
+          paymentY += 6;
+          doc.text(`Change Given: $${parseFloat((sale as any).changeGiven || "0").toFixed(2)}`, 20, paymentY);
+        }
+      }
+      
+      if (sale.paymentMethod === "check" && (sale as any).chequeNumber) {
+        paymentY += 6;
+        doc.text(`Cheque Number: ${(sale as any).chequeNumber}`, 20, paymentY);
+      }
+
+      // Warranty information
+      if ((sale as any).warrantyType && (sale as any).warrantyType !== "none") {
+        paymentY += 12;
+        doc.setFont("helvetica", "bold");
+        doc.text("Warranty Information:", 20, paymentY);
+        doc.setFont("helvetica", "normal");
+        paymentY += 6;
+        const warrantyTypeText = (sale as any).warrantyType === "full" ? "Full Invoice Warranty" : "Partial Items Warranty";
+        doc.text(`Type: ${warrantyTypeText}`, 20, paymentY);
+        if ((sale as any).warrantyDuration) {
+          paymentY += 6;
+          doc.text(`Duration: ${(sale as any).warrantyDuration}`, 20, paymentY);
+        }
+      }
 
       // Notes
       if (sale.notes) {
-        doc.text("Notes:", 20, finalY + 42 + discountOffset + laborOffset + perItemOffset);
-        doc.text(sale.notes, 20, finalY + 48 + discountOffset + laborOffset + perItemOffset);
+        paymentY += 12;
+        doc.setFont("helvetica", "bold");
+        doc.text("Notes:", 20, paymentY);
+        doc.setFont("helvetica", "normal");
+        paymentY += 6;
+        doc.text(sale.notes, 20, paymentY);
       }
 
       // Footer

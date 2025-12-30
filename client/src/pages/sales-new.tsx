@@ -83,6 +83,12 @@ const saleFormSchema = z.object({
   licensePlate: z.string().optional(),
   mileage: z.string().optional(),
   paymentMethod: z.enum(["cash", "card", "check"]),
+  cashReceived: z.string().optional(),
+  changeGiven: z.string().optional(),
+  chequeNumber: z.string().optional(),
+  warrantyType: z.enum(["none", "full", "partial"]).optional(),
+  warrantyDuration: z.string().optional(),
+  warrantyItemIds: z.array(z.number()).optional(),
   notes: z.string().optional(),
   discount: z.string().optional(),
   laborCost: z.string().optional(),
@@ -158,6 +164,9 @@ export default function NewSale() {
   const watchedItems = form.watch("items");
   const watchedDiscount = form.watch("discount");
   const watchedLabor = form.watch("laborCost");
+  const watchedPaymentMethod = form.watch("paymentMethod");
+  const watchedCashReceived = form.watch("cashReceived");
+  const watchedWarrantyType = form.watch("warrantyType");
 
   // Calculate totals
   const subtotal = watchedItems.reduce((sum, item) => {
@@ -774,31 +783,205 @@ export default function NewSale() {
                         </FormItem>
                       )}
                     />
-            <FormField
-              control={form.control}
-              name="laborCost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Labor</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        className="pl-7 font-mono"
-                        data-testid="input-labor-cost"
+                  </div>
+                  
+                  {/* Payment Details based on payment method */}
+                  {watchedPaymentMethod === "cash" && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="cashReceived"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cash Received</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  $
+                                </span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  {...field}
+                                  className="pl-7 font-mono"
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    // Recalculate grand total for change calculation
+                                    const received = parseFloat(e.target.value) || 0;
+                                    const currentSubtotal = watchedItems.reduce((sum, item) => {
+                                      return sum + (parseFloat(item.unitPrice || "0") * item.quantity);
+                                    }, 0);
+                                    const currentPerItemTax = watchedItems.reduce((sum, item) => {
+                                      return sum + (parseFloat(item.perItemTax || "0") * item.quantity);
+                                    }, 0);
+                                    const currentDiscount = parseFloat(watchedDiscount || "0");
+                                    const currentLabor = parseFloat(watchedLabor || "0");
+                                    const currentTaxableSubtotal = watchedItems.reduce((sum, item) => {
+                                      if (item.isTaxable === false) return sum;
+                                      return sum + (parseFloat(item.unitPrice || "0") * item.quantity);
+                                    }, 0);
+                                    const currentTaxableAmount = currentTaxableSubtotal > 0 
+                                      ? currentTaxableSubtotal + currentLabor - currentDiscount
+                                      : 0;
+                                    const currentGlobalTax = currentTaxableAmount * (globalTaxRate / 100);
+                                    const currentGrandTotal = currentSubtotal + currentLabor - currentDiscount + currentGlobalTax + currentPerItemTax;
+                                    const change = received - currentGrandTotal;
+                                    form.setValue("changeGiven", change > 0 ? change.toFixed(2) : "0.00");
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="changeGiven"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Change Given</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  $
+                                </span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  {...field}
+                                  className="pl-7 font-mono"
+                                  readOnly
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  )}
+                  
+                  {watchedPaymentMethod === "check" && (
+                    <FormField
+                      control={form.control}
+                      name="chequeNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cheque Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter cheque number"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  
+                  <FormField
+                    control={form.control}
+                    name="laborCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Labor</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                              $
+                            </span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              {...field}
+                              className="pl-7 font-mono"
+                              data-testid="input-labor-cost"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Warranty Section */}
+                  <div className="space-y-4 border-t pt-4">
+                    <FormField
+                      control={form.control}
+                      name="warrantyType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Warranty</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select warranty type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No Warranty</SelectItem>
+                              <SelectItem value="full">Full Invoice Warranty</SelectItem>
+                              <SelectItem value="partial">Partial Items Warranty</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {watchedWarrantyType && watchedWarrantyType !== "none" && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="warrantyDuration"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Warranty Duration</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., 1 year, 6 months, 90 days"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {watchedWarrantyType === "partial" && (
+                          <div className="space-y-2">
+                            <FormLabel>Select Items for Warranty</FormLabel>
+                            <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                              {watchedItems.map((item, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={form.watch(`warrantyItemIds`)?.includes(index) || false}
+                                    onChange={(e) => {
+                                      const currentIds = form.watch("warrantyItemIds") || [];
+                                      if (e.target.checked) {
+                                        form.setValue("warrantyItemIds", [...currentIds, index]);
+                                      } else {
+                                        form.setValue("warrantyItemIds", currentIds.filter(id => id !== index));
+                                      }
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <label className="text-sm">
+                                    {item.productName} (Qty: {item.quantity})
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                   <FormField
                     control={form.control}

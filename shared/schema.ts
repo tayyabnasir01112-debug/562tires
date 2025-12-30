@@ -77,6 +77,13 @@ export const sales = pgTable("sales", {
   // Payment
   paymentMethod: text("payment_method").notNull(), // cash, card, check
   paymentStatus: text("payment_status").notNull().default("paid"), // paid, pending
+  cashReceived: decimal("cash_received", { precision: 10, scale: 2 }), // Amount of cash received
+  changeGiven: decimal("change_given", { precision: 10, scale: 2 }), // Change given to customer
+  chequeNumber: text("cheque_number"), // Cheque number if payment is by cheque
+  // Warranty
+  warrantyType: text("warranty_type"), // "full" (entire invoice) or "partial" (selected items)
+  warrantyDuration: text("warranty_duration"), // e.g., "1 year", "6 months", "90 days"
+  warrantyItemIds: jsonb("warranty_item_ids"), // Array of sale item IDs if warranty is partial
   // Notes
   notes: text("notes"),
   // Timestamps
@@ -158,6 +165,12 @@ export const saleFormSchema = z.object({
   licensePlate: z.string().optional(),
   mileage: z.string().optional(),
   paymentMethod: z.enum(["cash", "card", "check"]),
+  cashReceived: z.string().optional(),
+  changeGiven: z.string().optional(),
+  chequeNumber: z.string().optional(),
+  warrantyType: z.enum(["none", "full", "partial"]).optional(),
+  warrantyDuration: z.string().optional(),
+  warrantyItemIds: z.array(z.number()).optional(),
   notes: z.string().optional(),
   items: z.array(z.object({
     productId: z.number(),

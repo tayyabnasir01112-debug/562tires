@@ -1,7 +1,7 @@
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { SaleWithItems } from "@shared/schema";
-import { Loader2, Copy, Share2, Download } from "lucide-react";
+import { Loader2, Copy, Share2, Download, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMemo } from "react";
 
@@ -71,10 +71,19 @@ export default function Receipt() {
   }, [sale, totals.perItemTax]);
 
   const shareWhatsApp = () => {
-    if (!params?.id) return;
+    if (!params?.id || !sale) return;
     const link = `${window.location.origin}/receipt/${params.id}`;
-    const text = encodeURIComponent(`Invoice ${sale?.invoiceNumber || params.id}\n${link}`);
+    const message = `Thank you for shopping at 562 Tires!\n\nHere is your copy of invoice ${sale.invoiceNumber}.\n\nTotal: $${totals.total.toFixed(2)}\n\nView your invoice: ${link}\n\nWe appreciate your business!`;
+    const text = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  const shareEmail = () => {
+    if (!params?.id || !sale) return;
+    const link = `${window.location.origin}/receipt/${params.id}`;
+    const subject = encodeURIComponent(`Your Invoice ${sale.invoiceNumber} from 562 Tires`);
+    const body = encodeURIComponent(`Thank you for shopping at 562 Tires!\n\nHere is your copy of invoice ${sale.invoiceNumber}.\n\nTotal: $${totals.total.toFixed(2)}\n\nView your invoice: ${link}\n\nWe appreciate your business!`);
+    window.location.href = `mailto:${sale.customerEmail || ''}?subject=${subject}&body=${body}`;
   };
 
   const copyLink = async () => {
@@ -111,8 +120,8 @@ export default function Receipt() {
 
   const totalFormatted = formatTotal(totals.total);
   const isCash = sale.paymentMethod?.toLowerCase() === "cash";
-  const cashGiven = isCash ? totals.total : 0;
-  const changeReceived = 0; // We don't track this currently
+  const cashGiven = parseFloat((sale as any).cashReceived || "0") || (isCash ? totals.total : 0);
+  const changeReceived = parseFloat((sale as any).changeGiven || "0") || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -198,6 +207,24 @@ export default function Receipt() {
             <Share2 className="h-4 w-4 mr-2" />
             WhatsApp
           </button>
+          {sale?.customerEmail && (
+            <button
+              type="button"
+              onClick={shareEmail}
+              className="flex-1 min-w-[100px] sm:flex-none inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+              style={{ 
+                WebkitAppearance: 'none', 
+                appearance: 'none',
+                opacity: 1,
+                visibility: 'visible',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email
+            </button>
+          )}
           <a 
             href={`/api/sales/${params?.id}/invoice`} 
             download
@@ -304,24 +331,77 @@ export default function Receipt() {
           </div>
 
           {/* Payment Information */}
-          {isCash && (
-            <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">$</span>
+          <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-900 uppercase font-medium">Payment Method</span>
+              <span className="text-gray-900 font-medium capitalize">
+                {sale.paymentMethod === "card" ? "Credit/Debit Card" : sale.paymentMethod === "cash" ? "Cash" : "Check"}
+              </span>
+            </div>
+            {sale.paymentMethod === "check" && (sale as any).chequeNumber && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-900 uppercase font-medium">Cheque Number</span>
+                <span className="text-gray-900 font-mono">{(sale as any).chequeNumber}</span>
+              </div>
+            )}
+            {isCash && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-900 uppercase font-medium">Cash Given</span>
+                  <span className="text-gray-900 font-medium">{formatMoney(cashGiven)}</span>
                 </div>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-900 uppercase font-medium">Cash Given</span>
-                <span className="text-gray-900 font-medium">{formatMoney(cashGiven)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-900 uppercase font-medium">Change Received</span>
-                <span className="text-gray-900 font-medium">{formatMoney(changeReceived)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold">
-                <span className="text-gray-900 uppercase">Cash Paid</span>
-                <span className="text-gray-900">{formatMoney(totals.total)}</span>
+                {changeReceived > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-900 uppercase font-medium">Change Received</span>
+                    <span className="text-gray-900 font-medium">{formatMoney(changeReceived)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-semibold">
+                  <span className="text-gray-900 uppercase">Cash Paid</span>
+                  <span className="text-gray-900">{formatMoney(totals.total)}</span>
+                </div>
+              </>
+            )}
+          </div>
+          
+          {/* Warranty Information */}
+          {(sale as any).warrantyType && (sale as any).warrantyType !== "none" && (
+            <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+              <div className="text-sm font-semibold text-gray-900 mb-2">Warranty Information</div>
+              <div className="text-sm space-y-1">
+                <div>
+                  <span className="text-gray-600">Type: </span>
+                  <span className="text-gray-900 capitalize">
+                    {(sale as any).warrantyType === "full" ? "Full Invoice" : "Partial Items"}
+                  </span>
+                </div>
+                {(sale as any).warrantyDuration && (
+                  <div>
+                    <span className="text-gray-600">Duration: </span>
+                    <span className="text-gray-900">{(sale as any).warrantyDuration}</span>
+                  </div>
+                )}
+                {(sale as any).warrantyType === "partial" && (sale as any).warrantyItemIds && (
+                  <div className="mt-2">
+                    <div className="text-gray-600 mb-1">Items Covered:</div>
+                    {(() => {
+                      try {
+                        const itemIds = typeof (sale as any).warrantyItemIds === "string" 
+                          ? JSON.parse((sale as any).warrantyItemIds) 
+                          : (sale as any).warrantyItemIds || [];
+                        return sale.items
+                          .filter(item => itemIds.includes(item.id))
+                          .map(item => (
+                            <div key={item.id} className="text-xs text-gray-600 ml-2">
+                              • {item.productName} (Qty: {item.quantity})
+                            </div>
+                          ));
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           )}

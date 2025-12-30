@@ -40,6 +40,7 @@ export interface IStorage {
   getSale(id: number): Promise<Sale | undefined>;
   getSaleWithItems(id: number): Promise<SaleWithItems | undefined>;
   createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<Sale>;
+  updateSale(id: number, sale: Partial<InsertSale>): Promise<Sale | undefined>;
   getRecentSales(limit: number): Promise<Sale[]>;
   getSalesByDateRange(startDate: Date, endDate: Date): Promise<Sale[]>;
   
@@ -217,6 +218,14 @@ export class DatabaseStorage implements IStorage {
     }
 
     return sale;
+  }
+
+  async updateSale(id: number, saleData: Partial<InsertSale>): Promise<Sale | undefined> {
+    const [updated] = await db.update(sales)
+      .set(saleData as any)
+      .where(eq(sales.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   async getRecentSales(limit: number): Promise<Sale[]> {

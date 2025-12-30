@@ -1,10 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Table,
   TableBody,
@@ -27,14 +44,70 @@ import {
 } from "lucide-react";
 import type { SaleWithItems } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 
 export default function SaleDetail() {
   const [match, params] = useRoute("/sales/:id");
   const { toast } = useToast();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    customerAddress: "",
+    paymentMethod: "card" as "cash" | "card" | "check",
+    cashReceived: "",
+    changeGiven: "",
+    chequeNumber: "",
+    warrantyType: "none" as "none" | "full" | "partial",
+    warrantyDuration: "",
+    notes: "",
+  });
 
   const { data: sale, isLoading } = useQuery<SaleWithItems>({
     queryKey: ["/api/sales", params?.id],
     enabled: !!params?.id,
+  });
+
+  // Initialize edit form when sale loads
+  useEffect(() => {
+    if (sale) {
+      setEditForm({
+        customerName: sale.customerName || "",
+        customerPhone: sale.customerPhone || "",
+        customerEmail: sale.customerEmail || "",
+        customerAddress: sale.customerAddress || "",
+        paymentMethod: (sale.paymentMethod as "cash" | "card" | "check") || "card",
+        cashReceived: (sale as any).cashReceived || "",
+        changeGiven: (sale as any).changeGiven || "",
+        chequeNumber: (sale as any).chequeNumber || "",
+        warrantyType: ((sale as any).warrantyType as "none" | "full" | "partial") || "none",
+        warrantyDuration: (sale as any).warrantyDuration || "",
+        notes: sale.notes || "",
+      });
+    }
+  }, [sale]);
+
+  const updateSaleMutation = useMutation({
+    mutationFn: async (data: typeof editForm) => {
+      return apiRequest("PUT", `/api/sales/${params?.id}`, data);
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      toast({
+        title: "Sale updated",
+        description: "The sale has been updated successfully.",
+      });
+      setEditOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update sale",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleDownloadInvoice = async () => {
@@ -139,6 +212,10 @@ export default function SaleDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
           <Button variant="outline" onClick={handleShareLink}>
             <Share2 className="h-4 w-4 mr-2" />
             Share Link
@@ -316,15 +393,82 @@ export default function SaleDetail() {
               <Receipt className="h-4 w-4" />
               Payment Information
             </div>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline" className="capitalize">
-                {sale.paymentMethod}
-              </Badge>
-              <Badge variant={sale.paymentStatus === "paid" ? "default" : "secondary"}>
-                {sale.paymentStatus}
-              </Badge>
+            <div className="space-y-2">
+              <div className="flex items-center gap-4">
+                <Badge variant="outline" className="capitalize">
+                  {sale.paymentMethod === "card" ? "Credit/Debit Card" : sale.paymentMethod === "cash" ? "Cash" : "Check"}
+                </Badge>
+                <Badge variant={sale.paymentStatus === "paid" ? "default" : "secondary"}>
+                  {sale.paymentStatus}
+                </Badge>
+              </div>
+              {sale.paymentMethod === "cash" && (sale as any).cashReceived && (
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cash Received:</span>
+                    <span className="font-mono">${parseFloat((sale as any).cashReceived || "0").toFixed(2)}</span>
+                  </div>
+                  {(sale as any).changeGiven && parseFloat((sale as any).changeGiven || "0") > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Change Given:</span>
+                      <span className="font-mono">${parseFloat((sale as any).changeGiven || "0").toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {sale.paymentMethod === "check" && (sale as any).chequeNumber && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Cheque Number: </span>
+                  <span className="font-mono">{(sale as any).chequeNumber}</span>
+                </div>
+              )}
             </div>
           </div>
+          
+          {/* Warranty Info */}
+          {(sale as any).warrantyType && (sale as any).warrantyType !== "none" && (
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                <FileText className="h-4 w-4" />
+                Warranty Information
+              </div>
+              <div className="text-sm space-y-1">
+                <div>
+                  <span className="text-muted-foreground">Warranty Type: </span>
+                  <span className="capitalize">{(sale as any).warrantyType === "full" ? "Full Invoice" : "Partial Items"}</span>
+                </div>
+                {(sale as any).warrantyDuration && (
+                  <div>
+                    <span className="text-muted-foreground">Duration: </span>
+                    <span>{(sale as any).warrantyDuration}</span>
+                  </div>
+                )}
+                {(sale as any).warrantyType === "partial" && (sale as any).warrantyItemIds && (
+                  <div className="mt-2">
+                    <span className="text-muted-foreground">Items Covered: </span>
+                    <div className="mt-1 space-y-1">
+                      {(() => {
+                        try {
+                          const itemIds = typeof (sale as any).warrantyItemIds === "string" 
+                            ? JSON.parse((sale as any).warrantyItemIds) 
+                            : (sale as any).warrantyItemIds || [];
+                          return sale.items
+                            .filter(item => itemIds.includes(item.id))
+                            .map(item => (
+                              <div key={item.id} className="text-xs text-muted-foreground">
+                                • {item.productName} (Qty: {item.quantity})
+                              </div>
+                            ));
+                        } catch {
+                          return null;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           {sale.notes && (
@@ -341,6 +485,146 @@ export default function SaleDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Sale</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Customer Name *</label>
+                <Input
+                  value={editForm.customerName}
+                  onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Phone</label>
+                <Input
+                  value={editForm.customerPhone}
+                  onChange={(e) => setEditForm({ ...editForm, customerPhone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email</label>
+                <Input
+                  type="email"
+                  value={editForm.customerEmail}
+                  onChange={(e) => setEditForm({ ...editForm, customerEmail: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Address</label>
+                <Input
+                  value={editForm.customerAddress}
+                  onChange={(e) => setEditForm({ ...editForm, customerAddress: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Payment Method *</label>
+              <Select
+                value={editForm.paymentMethod}
+                onValueChange={(value: "cash" | "card" | "check") =>
+                  setEditForm({ ...editForm, paymentMethod: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="card">Credit/Debit Card</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="check">Check</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editForm.paymentMethod === "cash" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Cash Received</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editForm.cashReceived}
+                    onChange={(e) => setEditForm({ ...editForm, cashReceived: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Change Given</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editForm.changeGiven}
+                    onChange={(e) => setEditForm({ ...editForm, changeGiven: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+            {editForm.paymentMethod === "check" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cheque Number</label>
+                <Input
+                  value={editForm.chequeNumber}
+                  onChange={(e) => setEditForm({ ...editForm, chequeNumber: e.target.value })}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Warranty Type</label>
+              <Select
+                value={editForm.warrantyType}
+                onValueChange={(value: "none" | "full" | "partial") =>
+                  setEditForm({ ...editForm, warrantyType: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Warranty</SelectItem>
+                  <SelectItem value="full">Full Invoice Warranty</SelectItem>
+                  <SelectItem value="partial">Partial Items Warranty</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editForm.warrantyType !== "none" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Warranty Duration</label>
+                <Input
+                  placeholder="e.g., 1 year, 6 months, 90 days"
+                  value={editForm.warrantyDuration}
+                  onChange={(e) => setEditForm({ ...editForm, warrantyDuration: e.target.value })}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes</label>
+              <Textarea
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => updateSaleMutation.mutate(editForm)}
+              disabled={updateSaleMutation.isPending || !editForm.customerName}
+            >
+              {updateSaleMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
