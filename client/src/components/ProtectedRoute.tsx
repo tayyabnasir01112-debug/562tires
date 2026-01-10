@@ -13,12 +13,12 @@ export function ProtectedRoute({ children, requireAdmin = false, requireRole }: 
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
+      // Only redirect if we're not already on the login page to avoid infinite loops
+      if (window.location.pathname !== "/login") {
         setLocation("/login");
-        return;
       }
-      
+    } else if (!isLoading && isAuthenticated) {
       if (requireAdmin && !isAdmin) {
         setLocation("/inventory");
         return;
