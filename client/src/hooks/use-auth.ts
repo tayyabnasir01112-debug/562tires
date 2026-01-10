@@ -10,25 +10,30 @@ export interface User {
 export function useAuth() {
   const [, setLocation] = useLocation();
   
-  const { data: user, isLoading, error } = useQuery<User>({
+  const { data: user, isLoading, error } = useQuery<User | null>({
     queryKey: ["/api/auth/me"],
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
+      try {
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Don't redirect here - let the component handle it
-          return null;
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Return null for unauthenticated users
+            return null;
+          }
+          throw new Error("Unauthorized");
         }
-        throw new Error("Unauthorized");
-      }
 
-      return response.json();
+        return response.json();
+      } catch (error) {
+        // Network errors or other issues - treat as unauthenticated
+        return null;
+      }
     },
   });
 

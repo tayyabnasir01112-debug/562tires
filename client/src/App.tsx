@@ -47,9 +47,13 @@ function Router() {
     }
   }, [isAuthenticated, location, setLocation]);
 
-  // If not authenticated, show login for protected routes
+  // Show login for unauthenticated users on protected routes
   if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
-    return <Login />;
+    return (
+      <div className="min-h-screen">
+        <Login />
+      </div>
+    );
   }
 
   return (
