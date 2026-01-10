@@ -169,7 +169,7 @@ function App() {
     );
   }
 
-  // Render login page without sidebar
+  // Render login page or unauthenticated pages without sidebar
   if (!isLoading && (!isAuthenticated || isLoginPage)) {
     return (
       <QueryClientProvider client={queryClient}>
