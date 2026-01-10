@@ -144,7 +144,7 @@ function Router() {
   );
 }
 
-function App() {
+function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
   const isReceiptPage = location.startsWith("/receipt/");
@@ -157,51 +157,51 @@ function App() {
 
   // Render receipt page without sidebar
   if (isReceiptPage) {
+    return <Router />;
+  }
+
+  // Show loading while checking auth
+  if (isLoading) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
     );
   }
 
   // Render login page or unauthenticated pages without sidebar
-  if (!isLoading && (!isAuthenticated || isLoginPage)) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    );
+  if (!isAuthenticated || isLoginPage) {
+    return <Router />;
   }
 
   // Render authenticated pages with sidebar
   return (
+    <SidebarProvider style={sidebarStyle}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
+          <header className="flex items-center justify-between gap-2 p-2 border-b border-border h-12 shrink-0">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <ThemeToggle />
+          </header>
+          <main className="flex-1 overflow-auto bg-background">
+            <Router />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <SidebarProvider style={sidebarStyle}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-                <header className="flex items-center justify-between gap-2 p-2 border-b border-border h-12 shrink-0">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto bg-background">
-                  <Router />
-                </main>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
+          <AppLayout />
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
