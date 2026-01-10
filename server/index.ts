@@ -1,7 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
+
+const { Pool } = pg;
+const PgSession = connectPgSimple(session);
 
 const app = express();
 const httpServer = createServer(app);
@@ -21,6 +27,30 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Session store using PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Configure session middleware
+app.use(
+  session({
+    store: new PgSession({
+      pool: pool as any,
+      tableName: "session",
+    }),
+    secret: process.env.SESSION_SECRET || "tyre-flow-secret-key-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: "lax",
+    },
+  })
+);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

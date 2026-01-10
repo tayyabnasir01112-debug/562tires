@@ -8,6 +8,9 @@ import {
   FileText,
   Circle,
   DollarSign,
+  Users,
+  LogOut,
+  User,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,19 +24,26 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
-const menuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "New Sale", url: "/sales/new", icon: ShoppingCart },
-  { title: "Sales History", url: "/sales", icon: FileText },
-  { title: "Expenses", url: "/expenses", icon: DollarSign },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Settings", url: "/settings", icon: Settings },
+const allMenuItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, adminOnly: true },
+  { title: "Inventory", url: "/inventory", icon: Package, adminOnly: false },
+  { title: "New Sale", url: "/sales/new", icon: ShoppingCart, adminOnly: true },
+  { title: "Sales History", url: "/sales", icon: FileText, adminOnly: true },
+  { title: "Expenses", url: "/expenses", icon: DollarSign, adminOnly: true },
+  { title: "Analytics", url: "/analytics", icon: BarChart3, adminOnly: true },
+  { title: "Employees", url: "/employees", icon: Users, adminOnly: true },
+  { title: "Settings", url: "/settings", icon: Settings, adminOnly: true },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user, isAdmin, logout } = useAuth();
+
+  // Filter menu items based on role
+  const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <Sidebar>
@@ -77,7 +87,23 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
+      <SidebarFooter className="p-4 border-t border-sidebar-border space-y-2">
+        {user && (
+          <div className="flex items-center gap-2 text-sm">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sidebar-foreground font-medium">{user.username}</span>
+            <span className="text-xs text-muted-foreground">({user.role})</span>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={logout}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
         <div className="text-xs text-muted-foreground">
           <p>562 Tyres Management</p>
           <p>v1.0.0</p>

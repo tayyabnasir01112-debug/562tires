@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import NotFound from "@/pages/not-found";
+import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Inventory from "@/pages/inventory";
 import NewSale from "@/pages/sales-new";
@@ -17,19 +18,50 @@ import Expenses from "@/pages/expenses";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import Receipt from "@/pages/receipt";
+import Employees from "@/pages/employees";
+import { useAuth } from "@/hooks/use-auth";
 
 function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated (except for login and receipt pages)
+  if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
+    setLocation("/login");
+    return null;
+  }
+
+  // Redirect logged-in users away from login page
+  if (isAuthenticated && location === "/login") {
+    setLocation("/");
+    return null;
+  }
+
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/inventory" component={Inventory} />
-      <Route path="/sales/new" component={NewSale} />
-      <Route path="/sales/:id" component={SaleDetail} />
-      <Route path="/sales" component={SalesHistory} />
-      <Route path="/expenses" component={Expenses} />
+      <Route path="/login" component={Login} />
       <Route path="/receipt/:id" component={Receipt} />
-      <Route path="/analytics" component={Analytics} />
-      <Route path="/settings" component={Settings} />
+      <Route path="/" component={() => <ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
+      <Route path="/inventory" component={() => <ProtectedRoute><Inventory /></ProtectedRoute>} />
+      <Route path="/sales/new" component={() => <ProtectedRoute requireAdmin><NewSale /></ProtectedRoute>} />
+      <Route path="/sales/:id" component={() => <ProtectedRoute requireAdmin><SaleDetail /></ProtectedRoute>} />
+      <Route path="/sales" component={() => <ProtectedRoute requireAdmin><SalesHistory /></ProtectedRoute>} />
+      <Route path="/expenses" component={() => <ProtectedRoute requireAdmin><Expenses /></ProtectedRoute>} />
+      <Route path="/analytics" component={() => <ProtectedRoute requireAdmin><Analytics /></ProtectedRoute>} />
+      <Route path="/employees" component={() => <ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
+      <Route path="/settings" component={() => <ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
       <Route component={NotFound} />
     </Switch>
   );

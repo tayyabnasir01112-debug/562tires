@@ -31,16 +31,44 @@ import {
   Trash2,
   Loader2,
   Store,
+  Lock,
+  User,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import type { Category } from "@shared/schema";
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
 export default function Settings() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [globalTaxRate, setGlobalTaxRate] = useState("9.5");
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryName, setCategoryName] = useState("");
   const [categoryDescription, setCategoryDescription] = useState("");
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    formState: { errors: passwordErrors },
+    reset: resetPassword,
+  } = useForm<ChangePasswordForm>({
+    resolver: zodResolver(changePasswordSchema),
+  });
 
   const { data: settings, isLoading: settingsLoading } = useQuery<{ globalTaxRate: string }>({
     queryKey: ["/api/settings/tax"],
@@ -105,6 +133,32 @@ export default function Settings() {
     },
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: ChangePasswordForm) => {
+      return apiRequest("PUT", "/api/auth/change-password", {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({
+        title: "Password changed",
+        description: "Your password has been updated successfully.",
+      });
+      setShowPasswordForm(false);
+      resetPassword();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to change password",
+        description: error.message || "Please check your current password",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCloseCategoryForm = () => {
     setShowCategoryForm(false);
     setEditingCategory(null);
@@ -143,6 +197,112 @@ export default function Settings() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Account Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Account Settings
+            </CardTitle>
+            <CardDescription>
+              Manage your account and password
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-medium">{user?.username || "Admin"}</p>
+              <p className="text-sm text-muted-foreground">Role: {user?.role || "admin"}</p>
+            </div>
+            <Dialog open={showPasswordForm} onOpenChange={setShowPasswordForm}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <Lock className="h-4 w-4 mr-2" />
+                  Change Password
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Change Password</DialogTitle>
+                  <DialogDescription>
+                    Enter your current password and choose a new one
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handlePasswordSubmit((data) => changePasswordMutation.mutate(data))}>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        {...registerPassword("currentPassword")}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                      />
+                      {passwordErrors.currentPassword && (
+                        <p className="text-sm text-destructive">
+                          {passwordErrors.currentPassword.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        {...registerPassword("newPassword")}
+                        placeholder="Enter new password (min 6 characters)"
+                        autoComplete="new-password"
+                      />
+                      {passwordErrors.newPassword && (
+                        <p className="text-sm text-destructive">
+                          {passwordErrors.newPassword.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        {...registerPassword("confirmPassword")}
+                        placeholder="Confirm new password"
+                        autoComplete="new-password"
+                      />
+                      {passwordErrors.confirmPassword && (
+                        <p className="text-sm text-destructive">
+                          {passwordErrors.confirmPassword.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowPasswordForm(false);
+                        resetPassword();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={changePasswordMutation.isPending}>
+                      {changePasswordMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Changing...
+                        </>
+                      ) : (
+                        "Change Password"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+
         {/* Store Information */}
         <Card>
           <CardHeader>

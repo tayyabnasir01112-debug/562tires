@@ -5,7 +5,10 @@ import { migrate as migrateCustomItems } from "./migrate-custom-items.js";
 import { migrate as migrateExpenses } from "./migrate-expenses.js";
 import { migrate as migrateSaleItemsFields } from "./migrate-sale-items-fields.js";
 import { migrate as migrateWarrantyPaymentFields } from "./migrate-warranty-payment-fields.js";
+import { migrate as migrateUsersTable } from "./migrate-users-table.js";
+import { migrate as migrateSessionTable } from "./migrate-session-table.js";
 import { seedDefaultCategories } from "./seed-default-categories.js";
+import { seedAdminUser } from "./seed-admin-user.js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -65,11 +68,30 @@ async function buildAll() {
     console.log("Warranty and payment fields migration skipped or failed (non-blocking):", err);
   }
 
+  try {
+    await migrateUsersTable();
+  } catch (err) {
+    console.log("Users table migration skipped or failed (non-blocking):", err);
+  }
+
+  try {
+    await migrateSessionTable();
+  } catch (err) {
+    console.log("Session table migration skipped or failed (non-blocking):", err);
+  }
+
   // Seed default categories
   try {
     await seedDefaultCategories();
   } catch (err) {
     console.log("Category seed skipped or failed (non-blocking):", err);
+  }
+
+  // Seed admin user
+  try {
+    await seedAdminUser();
+  } catch (err) {
+    console.log("Admin user seed skipped or failed (non-blocking):", err);
   }
 
   console.log("building client...");

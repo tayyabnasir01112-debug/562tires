@@ -9,8 +9,9 @@ import { insertProductSchema, insertCategorySchema, saleFormSchema, insertExpens
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { saleItems, sales, products, expenses } from "@shared/schema";
+import { saleItems, sales, products, expenses, users, loginSchema, createEmployeeSchema, changePasswordSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { requireAuth, requireRole, verifyPassword, hashPassword } from "./auth";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -80,8 +81,201 @@ export async function registerRoutes(
   // Seed default categories once at startup
   await ensureDefaultCategories();
   
-  // Dashboard stats
-  app.get("/api/dashboard/stats", async (req, res) => {
+  // Authentication routes (public)
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const result = loginSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid credentials", errors: result.error.errors });
+      }
+
+      const { username, password } = result.data;
+      const user = await storage.getUserByUsername(username);
+
+      if (!user || !user.isActive) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      // Set session
+      if (!req.session) {
+        return res.status(500).json({ message: "Session not available" });
+      }
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      req.session.role = user.role;
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Failed to login", error: error.message });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session?.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session!.userId!);
+      if (!user || !user.isActive) {
+        req.session?.destroy(() => {});
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      });
+    } catch (error: any) {
+      console.error("Get user error:", error);
+      res.status(500).json({ message: "Failed to get user" });
+    }
+  });
+
+  // Employee management routes (admin only)
+  app.get("/api/employees", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      // Filter out password field
+      const employees = allUsers.map(({ password, ...user }) => user);
+      res.json(employees);
+    } catch (error: any) {
+      console.error("Get employees error:", error);
+      res.status(500).json({ message: "Failed to fetch employees" });
+    }
+  });
+
+  app.post("/api/employees", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const result = createEmployeeSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid data", errors: result.error.errors });
+      }
+
+      const { username, password } = result.data;
+
+      // Check if username already exists
+      const existing = await storage.getUserByUsername(username);
+      if (existing) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      const newUser = await storage.createUser({
+        username,
+        password: hashedPassword,
+        role: "employee",
+        isActive: true,
+      });
+
+      const { password: _, ...userWithoutPassword } = newUser;
+      res.status(201).json(userWithoutPassword);
+    } catch (error: any) {
+      console.error("Create employee error:", error);
+      res.status(500).json({ message: "Failed to create employee", error: error.message });
+    }
+  });
+
+  app.delete("/api/employees/:id", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+
+      // Prevent deleting admin user
+      const user = await storage.getUser(id);
+      if (user?.role === "admin") {
+        return res.status(403).json({ message: "Cannot delete admin user" });
+      }
+
+      await storage.deleteUser(id);
+      res.json({ message: "Employee deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete employee error:", error);
+      res.status(500).json({ message: "Failed to delete employee" });
+    }
+  });
+
+  app.put("/api/employees/:id/toggle", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      if (user.role === "admin") {
+        return res.status(403).json({ message: "Cannot deactivate admin user" });
+      }
+
+      const updated = await storage.updateUser(id, { isActive: !user.isActive });
+      if (!updated) {
+        return res.status(500).json({ message: "Failed to update employee" });
+      }
+
+      const { password: _, ...userWithoutPassword } = updated;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      console.error("Toggle employee error:", error);
+      res.status(500).json({ message: "Failed to toggle employee status" });
+    }
+  });
+
+  // Change password (admin only in settings)
+  app.put("/api/auth/change-password", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const result = changePasswordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid data", errors: result.error.errors });
+      }
+
+      const { currentPassword, newPassword } = result.data;
+      const userId = req.session!.userId!;
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const isValidPassword = await verifyPassword(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserPassword(userId, hashedPassword);
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error: any) {
+      console.error("Change password error:", error);
+      res.status(500).json({ message: "Failed to change password", error: error.message });
+    }
+  });
+  
+  // Dashboard stats (require auth, admin only)
+  app.get("/api/dashboard/stats", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -90,8 +284,8 @@ export async function registerRoutes(
     }
   });
 
-  // Categories
-  app.get("/api/categories", async (req, res) => {
+  // Categories (accessible to admin and employees)
+  app.get("/api/categories", requireAuth, requireRole("admin", "employee"), async (req, res) => {
     try {
       // Always ensure default categories exist before returning
       await ensureDefaultCategories();
@@ -127,7 +321,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const data = insertCategorySchema.parse(req.body);
       const category = await storage.createCategory(data);
@@ -141,7 +335,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/categories/:id", async (req, res) => {
+  app.patch("/api/categories/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertCategorySchema.partial().parse(req.body);
@@ -159,7 +353,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/categories/:id", async (req, res) => {
+  app.delete("/api/categories/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCategory(id);
@@ -188,8 +382,8 @@ export async function registerRoutes(
     }
   });
 
-  // Products
-  app.get("/api/products", async (req, res) => {
+  // Products (accessible to admin and employees)
+  app.get("/api/products", requireAuth, requireRole("admin", "employee"), async (req, res) => {
     try {
       const products = await storage.getProducts();
       res.json(products);
@@ -198,7 +392,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/products/low-stock", async (req, res) => {
+  app.get("/api/products/low-stock", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const products = await storage.getLowStockProducts();
       res.json(products);
@@ -207,7 +401,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/products/:id", async (req, res) => {
+  app.get("/api/products/:id", requireAuth, requireRole("admin", "employee"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const product = await storage.getProduct(id);
@@ -220,7 +414,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", requireAuth, requireRole("admin", "employee"), async (req, res) => {
     try {
       const body = { ...req.body };
       if (!body.sku || String(body.sku).trim() === "") {
@@ -241,7 +435,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/products/:id", async (req, res) => {
+  app.patch("/api/products/:id", requireAuth, requireRole("admin", "employee"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertProductSchema.partial().parse(req.body);
@@ -261,7 +455,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", requireAuth, requireRole("admin", "employee"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteProduct(id);
@@ -272,7 +466,7 @@ export async function registerRoutes(
   });
 
   // Product Import
-  app.post("/api/products/import/preview", upload.single("file"), async (req, res) => {
+  app.post("/api/products/import/preview", requireAuth, requireRole("admin"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -301,7 +495,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/products/import", upload.single("file"), async (req, res) => {
+  app.post("/api/products/import", requireAuth, requireRole("admin"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -352,7 +546,7 @@ export async function registerRoutes(
   });
 
   // Sales
-  app.get("/api/sales", async (req, res) => {
+  app.get("/api/sales", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const sales = await storage.getSales();
       res.json(sales);
@@ -361,7 +555,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sales/recent", async (req, res) => {
+  app.get("/api/sales/recent", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const sales = await storage.getRecentSales(10);
       res.json(sales);
@@ -371,7 +565,7 @@ export async function registerRoutes(
   });
 
   // Expenses
-  app.get("/api/expenses", async (req, res) => {
+  app.get("/api/expenses", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const expenses = await storage.getExpenses();
       res.json(expenses);
@@ -380,7 +574,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/expenses", async (req, res) => {
+  app.post("/api/expenses", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const { expenseDate, ...expenseData } = req.body;
       const validated = insertExpenseSchema.parse({
@@ -395,7 +589,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/expenses/:id", async (req, res) => {
+  app.delete("/api/expenses/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteExpense(id);
@@ -408,7 +602,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sales/export", async (req, res) => {
+  app.get("/api/sales/export", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const format = req.query.format as string || "csv";
       const sales = await storage.getSales();
@@ -450,7 +644,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sales/:id", async (req, res) => {
+  app.get("/api/sales/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -470,7 +664,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/sales", async (req, res) => {
+  app.post("/api/sales", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const { items, ...saleData } = req.body;
 
@@ -608,7 +802,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/sales/:id", async (req, res) => {
+  app.put("/api/sales/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { items, ...saleData } = req.body;
@@ -648,7 +842,7 @@ export async function registerRoutes(
   });
 
   // Invoice PDF generation
-  app.get("/api/sales/:id/invoice", async (req, res) => {
+  app.get("/api/sales/:id/invoice", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const sale = await storage.getSaleWithItems(id);
@@ -889,8 +1083,8 @@ export async function registerRoutes(
     }
   });
 
-  // Analytics - Today's Activity
-  app.get("/api/analytics/today", async (req, res) => {
+  // Analytics - Today's Activity (admin only)
+  app.get("/api/analytics/today", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const activity = await storage.getTodayActivity();
       res.json(activity);
@@ -901,7 +1095,7 @@ export async function registerRoutes(
   });
 
   // Analytics - Comparison Data
-  app.get("/api/analytics/comparison", async (req, res) => {
+  app.get("/api/analytics/comparison", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const { date } = req.query;
       if (!date) {
@@ -917,7 +1111,7 @@ export async function registerRoutes(
   });
 
   // Analytics
-  app.get("/api/analytics/sales", async (req, res) => {
+  app.get("/api/analytics/sales", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       const allSales = await storage.getSales();
@@ -1020,7 +1214,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics/export", async (req, res) => {
+  app.get("/api/analytics/export", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       const sales = await storage.getSales();
