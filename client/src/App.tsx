@@ -22,9 +22,10 @@ import Receipt from "@/pages/receipt";
 import Employees from "@/pages/employees";
 import { useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { Redirect } from "@/components/Redirect";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const [location, setLocation] = useLocation();
 
   // Show loading while checking auth
@@ -46,27 +47,108 @@ function Router() {
     }
   }, [isAuthenticated, location, setLocation]);
 
+  // If not authenticated, show login for protected routes
+  if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
+    return <Login />;
+  }
+
   return (
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/receipt/:id" component={Receipt} />
-      <Route path="/" component={() => <ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
-      <Route path="/inventory" component={() => <ProtectedRoute><Inventory /></ProtectedRoute>} />
-      <Route path="/sales/new" component={() => <ProtectedRoute requireAdmin><NewSale /></ProtectedRoute>} />
-      <Route path="/sales/:id" component={() => <ProtectedRoute requireAdmin><SaleDetail /></ProtectedRoute>} />
-      <Route path="/sales" component={() => <ProtectedRoute requireAdmin><SalesHistory /></ProtectedRoute>} />
-      <Route path="/expenses" component={() => <ProtectedRoute requireAdmin><Expenses /></ProtectedRoute>} />
-      <Route path="/analytics" component={() => <ProtectedRoute requireAdmin><Analytics /></ProtectedRoute>} />
-      <Route path="/employees" component={() => <ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
-      <Route path="/settings" component={() => <ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
+      <Route path="/">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <Dashboard />
+          </ProtectedRoute>
+        ) : isAuthenticated ? (
+          <Redirect to="/inventory" />
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/inventory">
+        {isAuthenticated ? (
+          <ProtectedRoute>
+            <Inventory />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/sales/new">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <NewSale />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/sales/:id">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <SaleDetail />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/sales">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <SalesHistory />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/expenses">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <Expenses />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/analytics">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <Analytics />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/employees">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <Employees />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
+      <Route path="/settings">
+        {isAuthenticated && isAdmin ? (
+          <ProtectedRoute requireAdmin>
+            <Settings />
+          </ProtectedRoute>
+        ) : (
+          <Login />
+        )}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
   const isReceiptPage = location.startsWith("/receipt/");
+  const isLoginPage = location === "/login";
   
   const sidebarStyle = {
     "--sidebar-width": "16rem",
@@ -87,6 +169,21 @@ function App() {
     );
   }
 
+  // Render login page without sidebar
+  if (!isLoading && (!isAuthenticated || isLoginPage)) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  // Render authenticated pages with sidebar
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
