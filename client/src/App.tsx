@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
   // Show loading while checking auth
   if (isLoading) {
@@ -37,16 +37,15 @@ function Router() {
     );
   }
 
-  // Redirect to login if not authenticated (except for login and receipt pages)
-  if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
-    setLocation("/login");
-    return null;
-  }
-
   // Redirect logged-in users away from login page
   if (isAuthenticated && location === "/login") {
     setLocation("/");
     return null;
+  }
+
+  // If not authenticated and trying to access protected routes, show login
+  if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
+    return <Login />;
   }
 
   return (
