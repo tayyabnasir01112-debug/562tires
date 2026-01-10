@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,6 +21,7 @@ import Settings from "@/pages/settings";
 import Receipt from "@/pages/receipt";
 import Employees from "@/pages/employees";
 import { useAuth } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -38,15 +40,11 @@ function Router() {
   }
 
   // Redirect logged-in users away from login page
-  if (isAuthenticated && location === "/login") {
-    setLocation("/");
-    return null;
-  }
-
-  // If not authenticated and trying to access protected routes, show login
-  if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
-    return <Login />;
-  }
+  useEffect(() => {
+    if (isAuthenticated && location === "/login") {
+      setLocation("/");
+    }
+  }, [isAuthenticated, location, setLocation]);
 
   return (
     <Switch>

@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { useLocation, useRouter } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, User as UserIcon } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
@@ -31,17 +31,22 @@ export default function Login() {
 
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // Invalidate auth query cache so it refetches with new session
+      queryClient.setQueryData(["/api/auth/me"], data);
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      
       toast({
         title: "Welcome back!",
         description: `Logged in as ${data.username}`,
       });
       
+      // Use window.location for full page reload to ensure session cookie is sent
       // Redirect based on role
       if (data.role === "admin") {
-        setLocation("/");
+        window.location.href = "/";
       } else {
-        setLocation("/inventory");
+        window.location.href = "/inventory";
       }
     },
     onError: (error: Error) => {

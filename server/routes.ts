@@ -105,10 +105,13 @@ export async function registerRoutes(
       if (!req.session) {
         return res.status(500).json({ message: "Session not available" });
       }
-      req.session.userId = user.id;
-      req.session.username = user.username;
-      req.session.role = user.role;
+      
+      // Save session data (express-session will automatically save)
+      (req.session as any).userId = user.id;
+      (req.session as any).username = user.username;
+      (req.session as any).role = user.role;
 
+      // Send response (express-session middleware will save the session automatically)
       res.json({
         id: user.id,
         username: user.username,

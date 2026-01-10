@@ -43,12 +43,13 @@ app.use(
     secret: process.env.SESSION_SECRET || "tyre-flow-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: "lax",
-    },
+      cookie: {
+        secure: process.env.NODE_ENV === "production" || process.env.NETLIFY === "true",
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        sameSite: "lax",
+        domain: process.env.NODE_ENV === "production" ? undefined : undefined, // Let browser set domain
+      },
   })
 );
 
