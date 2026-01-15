@@ -25,8 +25,21 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Redirect } from "@/components/Redirect";
 
 function Router() {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const [location, setLocation] = useLocation();
+  const isReceiptPage = location.startsWith("/receipt/");
+  
+  // For receipt pages, skip auth entirely
+  if (isReceiptPage) {
+    return (
+      <Switch>
+        <Route path="/receipt/:id" component={Receipt} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
+  // For all other pages, check auth
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
   // Show loading while checking auth
   if (isLoading) {
@@ -48,7 +61,7 @@ function Router() {
   }, [isAuthenticated, location, setLocation]);
 
   // Show login for unauthenticated users on protected routes
-  if (!isAuthenticated && location !== "/login" && !location.startsWith("/receipt/")) {
+  if (!isAuthenticated && location !== "/login") {
     return (
       <div className="min-h-screen">
         <Login />
@@ -59,7 +72,6 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/receipt/:id" component={Receipt} />
       <Route path="/">
         {isAuthenticated && isAdmin ? (
           <ProtectedRoute requireAdmin>
