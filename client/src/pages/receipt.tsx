@@ -24,6 +24,19 @@ export default function Receipt() {
     queryKey: ["/api/receipt", params?.id],
     enabled: !!params?.id,
     retry: 1,
+    queryFn: async ({ queryKey }) => {
+      const url = queryKey.join("/");
+      const res = await fetch(url, {
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        const text = (await res.text()) || res.statusText;
+        throw new Error(`${res.status}: ${text}`);
+      }
+      
+      return await res.json();
+    },
   });
 
   const totals = useMemo(() => {
