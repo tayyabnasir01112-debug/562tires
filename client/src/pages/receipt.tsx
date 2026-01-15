@@ -61,13 +61,15 @@ export default function Receipt() {
   });
 
   useEffect(() => {
-    console.log("Receipt page - Params:", params);
-    console.log("Receipt page - ID:", params?.id);
-    console.log("Receipt page - Loading:", isLoading);
-    console.log("Receipt page - Error:", error);
-    console.log("Receipt page - Sale:", sale);
-    if (error) {
-      console.error("Receipt fetch error details:", error);
+    if (params?.id) {
+      console.log("Receipt page - ID:", params.id);
+      console.log("Receipt page - Loading:", isLoading);
+      if (error) {
+        console.error("Receipt fetch error:", error);
+      }
+      if (sale) {
+        console.log("Receipt data loaded, items:", sale.items?.length);
+      }
     }
   }, [params?.id, isLoading, error, sale]);
 
@@ -153,7 +155,6 @@ export default function Receipt() {
     return `${month} ${day}, ${year} • ${displayHours}:${displayMinutes} ${ampm}`;
   };
 
-  // Safety check - if route doesn't match, show error (after all hooks)
   if (!match || !params?.id) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
