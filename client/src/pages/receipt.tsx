@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { SaleWithItems } from "@shared/schema";
 import { Loader2, Copy, Share2, Download, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 
 function formatMoney(v: number | string) {
   const num = typeof v === "string" ? parseFloat(v || "0") : v;
@@ -59,19 +59,6 @@ export default function Receipt() {
       }
     },
   });
-
-  useEffect(() => {
-    if (params?.id) {
-      console.log("Receipt page - ID:", params.id);
-      console.log("Receipt page - Loading:", isLoading);
-      if (error) {
-        console.error("Receipt fetch error:", error);
-      }
-      if (sale) {
-        console.log("Receipt data loaded, items:", sale.items?.length);
-      }
-    }
-  }, [params?.id, isLoading, error, sale]);
 
   const totals = useMemo(() => {
     if (!sale || !sale.items) return { subtotal: 0, perItemTax: 0, discount: 0, salesTax: 0, labor: 0, total: 0 };
