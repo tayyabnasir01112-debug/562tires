@@ -69,10 +69,10 @@ export default function Receipt() {
     if (error) {
       console.error("Receipt fetch error details:", error);
     }
-  }, [params, params?.id, isLoading, error, sale]);
+  }, [params?.id, isLoading, error, sale]);
 
   const totals = useMemo(() => {
-    if (!sale) return { subtotal: 0, perItemTax: 0, discount: 0, salesTax: 0, labor: 0, total: 0 };
+    if (!sale || !sale.items) return { subtotal: 0, perItemTax: 0, discount: 0, salesTax: 0, labor: 0, total: 0 };
     const subtotal = sale.items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0);
     const perItemTax = sale.items.reduce((sum, item) => sum + (parseFloat(item.perItemTax || "0") * item.quantity), 0);
     const discount = parseFloat(sale.discount || "0");
@@ -88,7 +88,7 @@ export default function Receipt() {
 
   // Calculate California Tire Fee breakdown
   const tireFeeBreakdown = useMemo(() => {
-    if (!sale || totals.perItemTax <= 0) return null;
+    if (!sale || !sale.items || totals.perItemTax <= 0) return null;
     
     // Find items with tire fee and calculate breakdown
     const tireFeeItems = sale.items.filter(item => {
