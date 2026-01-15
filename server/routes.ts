@@ -647,6 +647,27 @@ export async function registerRoutes(
     }
   });
 
+  // Public receipt endpoint (no authentication required)
+  app.get("/api/receipt/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid sale ID" });
+      }
+      const sale = await storage.getSaleWithItems(id);
+      if (!sale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+      res.json(sale);
+    } catch (error: any) {
+      console.error("Error fetching receipt:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch receipt",
+        error: error?.message || String(error)
+      });
+    }
+  });
+
   app.get("/api/sales/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -841,6 +862,196 @@ export async function registerRoutes(
         message: "Failed to update sale",
         error: error?.message || String(error)
       });
+    }
+  });
+
+  // Public invoice PDF generation (for receipt page)
+  app.get("/api/receipt/:id/invoice", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const sale = await storage.getSaleWithItems(id);
+      
+      if (!sale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header
+      doc.setFontSize(24);
+      doc.setFont("helvetica", "bold");
+      doc.text("562 Tires", 20, 25);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("13441 Imperial Hwy, Whittier, CA 90605", 20, 32);
+      doc.text("Phone: (562) 469-1064", 20, 38);
+      doc.text("Mon-Fri 8am-7pm - Sat 8am-5pm - Sun 8am-3pm", 20, 44);
+
+      // Invoice number and date
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Invoice: ${sale.invoiceNumber}`, pageWidth - 20, 25, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Date: ${new Date(sale.saleDate!).toLocaleDateString()}`, pageWidth - 20, 32, { align: "right" });
+      doc.text(`Status: ${sale.paymentStatus.toUpperCase()}`, pageWidth - 20, 38, { align: "right" });
+
+      // Customer info
+      doc.setDrawColor(200);
+      doc.line(20, 48, pageWidth - 20, 48);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("Bill To:", 20, 58);
+      doc.setFont("helvetica", "normal");
+      doc.text(sale.customerName, 20, 65);
+      if (sale.customerPhone) doc.text(sale.customerPhone, 20, 71);
+      if (sale.customerAddress) doc.text(sale.customerAddress, 20, 77);
+
+      // Vehicle info
+      if (sale.vehicleMake || sale.vehicleModel) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Vehicle:", pageWidth / 2, 58);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${sale.vehicleYear || ""} ${sale.vehicleMake || ""} ${sale.vehicleModel || ""}`.trim(), pageWidth / 2, 65);
+        if (sale.licensePlate) doc.text(`Plate: ${sale.licensePlate}`, pageWidth / 2, 71);
+        if (sale.mileage) doc.text(`Mileage: ${sale.mileage}`, pageWidth / 2, 77);
+      }
+
+      // Items table
+      const tableData = sale.items.map((item) => [
+        item.productName,
+        item.productSku,
+        item.quantity.toString(),
+        `$${parseFloat(item.unitPrice).toFixed(2)}`,
+        `$${(parseFloat(item.perItemTax || "0") * item.quantity).toFixed(2)}`,
+        `$${parseFloat(item.lineTotal).toFixed(2)}`,
+      ]);
+
+      autoTable(doc, {
+        startY: 90,
+        head: [["Item", "SKU", "Qty", "Unit Price", "California Tire Fee", "Total"]],
+        body: tableData,
+        theme: "striped",
+        headStyles: { fillColor: [51, 51, 51] },
+        styles: { fontSize: 9 },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 15, halign: "center" },
+          3: { cellWidth: 25, halign: "right" },
+          4: { cellWidth: 25, halign: "right" },
+          5: { cellWidth: 25, halign: "right" },
+        },
+      });
+
+      // Totals
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      const totalsX = pageWidth - 70;
+
+      doc.setFontSize(10);
+      doc.text("Subtotal:", totalsX, finalY);
+      doc.text(`$${parseFloat(sale.subtotal).toFixed(2)}`, pageWidth - 20, finalY, { align: "right" });
+
+      if (parseFloat((sale as any).laborCost || "0") > 0) {
+        doc.text("Labor:", totalsX, finalY + 6);
+        doc.text(`$${parseFloat((sale as any).laborCost || "0").toFixed(2)}`, pageWidth - 20, finalY + 6, { align: "right" });
+      }
+
+      if (parseFloat(sale.discount || "0") > 0) {
+        const offset = parseFloat((sale as any).laborCost || "0") > 0 ? 12 : 6;
+        doc.text("Discount:", totalsX, finalY + offset);
+        doc.text(`-$${parseFloat(sale.discount || "0").toFixed(2)}`, pageWidth - 20, finalY + offset, { align: "right" });
+      }
+
+      const discountOffset = parseFloat(sale.discount || "0") > 0 ? 6 : 0;
+      const laborOffset = parseFloat((sale as any).laborCost || "0") > 0 ? 6 : 0;
+
+      doc.text(
+        `Sales Tax (${parseFloat(sale.globalTaxRate).toFixed(1)}%):`,
+        totalsX,
+        finalY + 12 + discountOffset + laborOffset,
+      );
+      doc.text(
+        `$${parseFloat(sale.globalTaxAmount).toFixed(2)}`,
+        pageWidth - 20,
+        finalY + 12 + discountOffset + laborOffset,
+        { align: "right" },
+      );
+
+      if (parseFloat(sale.perItemTaxTotal || "0") > 0) {
+        doc.text("California Tire Fee:", totalsX, finalY + 18 + discountOffset + laborOffset);
+        doc.text(`$${parseFloat(sale.perItemTaxTotal || "0").toFixed(2)}`, pageWidth - 20, finalY + 18 + discountOffset + laborOffset, { align: "right" });
+      }
+
+      const perItemOffset = parseFloat(sale.perItemTaxTotal || "0") > 0 ? 6 : 0;
+
+      doc.setDrawColor(100);
+      doc.line(totalsX, finalY + 22 + discountOffset + laborOffset + perItemOffset, pageWidth - 20, finalY + 22 + discountOffset + laborOffset + perItemOffset);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Total:", totalsX, finalY + 30 + discountOffset + laborOffset + perItemOffset);
+      doc.text(`$${parseFloat(sale.grandTotal).toFixed(2)}`, pageWidth - 20, finalY + 30 + discountOffset + laborOffset + perItemOffset, { align: "right" });
+
+      // Payment method and details
+      let paymentY = finalY + 30 + discountOffset + laborOffset + perItemOffset;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const paymentMethodText = sale.paymentMethod === "card" ? "Credit/Debit Card" : sale.paymentMethod === "cash" ? "Cash" : "Check";
+      doc.text(`Payment Method: ${paymentMethodText}`, 20, paymentY);
+      
+      if (sale.paymentMethod === "cash" && (sale as any).cashReceived) {
+        paymentY += 6;
+        doc.text(`Cash Received: $${parseFloat((sale as any).cashReceived || "0").toFixed(2)}`, 20, paymentY);
+        if ((sale as any).changeGiven && parseFloat((sale as any).changeGiven || "0") > 0) {
+          paymentY += 6;
+          doc.text(`Change Given: $${parseFloat((sale as any).changeGiven || "0").toFixed(2)}`, 20, paymentY);
+        }
+      }
+      
+      if (sale.paymentMethod === "check" && (sale as any).chequeNumber) {
+        paymentY += 6;
+        doc.text(`Cheque Number: ${(sale as any).chequeNumber}`, 20, paymentY);
+      }
+
+      // Warranty information
+      if ((sale as any).warrantyType && (sale as any).warrantyType !== "none") {
+        paymentY += 12;
+        doc.setFont("helvetica", "bold");
+        doc.text("Warranty Information:", 20, paymentY);
+        doc.setFont("helvetica", "normal");
+        paymentY += 6;
+        const warrantyTypeText = (sale as any).warrantyType === "full" ? "Full Invoice Warranty" : "Partial Items Warranty";
+        doc.text(`Type: ${warrantyTypeText}`, 20, paymentY);
+        if ((sale as any).warrantyDuration) {
+          paymentY += 6;
+          doc.text(`Duration: ${(sale as any).warrantyDuration}`, 20, paymentY);
+        }
+      }
+
+      // Notes
+      if (sale.notes) {
+        paymentY += 12;
+        doc.setFont("helvetica", "bold");
+        doc.text("Notes:", 20, paymentY);
+        doc.setFont("helvetica", "normal");
+        paymentY += 6;
+        doc.text(sale.notes, 20, paymentY);
+      }
+
+      // Footer
+      doc.setFontSize(9);
+      doc.setTextColor(128);
+      doc.text("Thank you for choosing 562 Tyres!", pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
+
+      const pdfBuffer = doc.output("arraybuffer");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=invoice-${sale.invoiceNumber}.pdf`);
+      res.send(Buffer.from(pdfBuffer));
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ message: "Failed to generate invoice" });
     }
   });
 

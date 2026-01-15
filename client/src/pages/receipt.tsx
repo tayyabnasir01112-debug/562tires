@@ -20,9 +20,10 @@ export default function Receipt() {
   const [match, params] = useRoute("/receipt/:id");
   const { toast } = useToast();
 
-  const { data: sale, isLoading } = useQuery<SaleWithItems>({
-    queryKey: ["/api/sales", params?.id],
+  const { data: sale, isLoading, error } = useQuery<SaleWithItems>({
+    queryKey: ["/api/receipt", params?.id],
     enabled: !!params?.id,
+    retry: 1,
   });
 
   const totals = useMemo(() => {
@@ -107,12 +108,25 @@ export default function Receipt() {
     return `${month} ${day}, ${year} • ${displayHours}:${displayMinutes} ${ampm}`;
   };
 
-  if (isLoading || !sale) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading invoice...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !sale) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center space-y-4">
+          <div className="text-lg font-semibold text-gray-900">Invoice not found</div>
+          <div className="text-sm text-gray-600">
+            {error ? "Unable to load invoice. Please check the link and try again." : "The requested invoice could not be found."}
+          </div>
         </div>
       </div>
     );
@@ -226,7 +240,7 @@ export default function Receipt() {
             </button>
           )}
           <a 
-            href={`/api/sales/${params?.id}/invoice`} 
+            href={`/api/receipt/${params?.id}/invoice`} 
             download
             className="flex-1 min-w-[100px] sm:flex-none inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
             style={{ 
