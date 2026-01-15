@@ -25,28 +25,51 @@ export default function Receipt() {
     enabled: !!params?.id,
     retry: 1,
     queryFn: async ({ queryKey }) => {
-      const url = queryKey.join("/");
-      const res = await fetch(url, {
-        credentials: "include",
-      });
-      
-      if (!res.ok) {
-        const text = (await res.text()) || res.statusText;
-        throw new Error(`${res.status}: ${text}`);
+      try {
+        const url = queryKey.join("/");
+        console.log("Fetching receipt from URL:", url);
+        console.log("Query key:", queryKey);
+        
+        const res = await fetch(url, {
+          credentials: "include",
+        });
+        
+        console.log("Response status:", res.status);
+        console.log("Response ok:", res.ok);
+        
+        if (!res.ok) {
+          const text = (await res.text()) || res.statusText;
+          console.error("Fetch error:", res.status, text);
+          throw new Error(`${res.status}: ${text}`);
+        }
+        
+        const data = await res.json();
+        console.log("Receipt data received:", data);
+        console.log("Items count:", data?.items?.length);
+        
+        if (!data || !data.items) {
+          console.error("Invalid data structure:", data);
+          throw new Error("Invalid receipt data structure");
+        }
+        
+        return data;
+      } catch (err) {
+        console.error("Query function error:", err);
+        throw err;
       }
-      
-      return await res.json();
     },
   });
 
   useEffect(() => {
-    if (params?.id) {
-      console.log("Receipt page - ID:", params.id);
-      console.log("Receipt page - Loading:", isLoading);
-      console.log("Receipt page - Error:", error);
-      console.log("Receipt page - Sale:", sale);
+    console.log("Receipt page - Params:", params);
+    console.log("Receipt page - ID:", params?.id);
+    console.log("Receipt page - Loading:", isLoading);
+    console.log("Receipt page - Error:", error);
+    console.log("Receipt page - Sale:", sale);
+    if (error) {
+      console.error("Receipt fetch error details:", error);
     }
-  }, [params?.id, isLoading, error, sale]);
+  }, [params, params?.id, isLoading, error, sale]);
 
   const totals = useMemo(() => {
     if (!sale) return { subtotal: 0, perItemTax: 0, discount: 0, salesTax: 0, labor: 0, total: 0 };
@@ -141,13 +164,32 @@ export default function Receipt() {
     );
   }
 
-  if (error || !sale) {
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 max-w-md mx-auto p-6">
+          <div className="text-lg font-semibold text-gray-900">Error loading invoice</div>
+          <div className="text-sm text-gray-600">
+            {error instanceof Error ? error.message : "Unable to load invoice. Please check the link and try again."}
+          </div>
+          <div className="text-xs text-gray-500 mt-4">
+            Receipt ID: {params?.id || "N/A"}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoading && !sale) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center space-y-4 max-w-md mx-auto p-6">
           <div className="text-lg font-semibold text-gray-900">Invoice not found</div>
           <div className="text-sm text-gray-600">
-            {error ? "Unable to load invoice. Please check the link and try again." : "The requested invoice could not be found."}
+            The requested invoice could not be found.
+          </div>
+          <div className="text-xs text-gray-500 mt-4">
+            Receipt ID: {params?.id || "N/A"}
           </div>
         </div>
       </div>
