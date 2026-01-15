@@ -20,18 +20,6 @@ export default function Receipt() {
   const [match, params] = useRoute("/receipt/:id");
   const { toast } = useToast();
 
-  // Safety check - if route doesn't match, show error
-  if (!match || !params?.id) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center space-y-4">
-          <div className="text-lg font-semibold text-gray-900">Invalid receipt link</div>
-          <div className="text-sm text-gray-600">The receipt ID is missing from the URL.</div>
-        </div>
-      </div>
-    );
-  }
-
   const { data: sale, isLoading, error } = useQuery<SaleWithItems>({
     queryKey: ["/api/receipt", params?.id],
     enabled: !!params?.id,
@@ -164,6 +152,18 @@ export default function Receipt() {
     const displayMinutes = minutes.toString().padStart(2, "0");
     return `${month} ${day}, ${year} • ${displayHours}:${displayMinutes} ${ampm}`;
   };
+
+  // Safety check - if route doesn't match, show error (after all hooks)
+  if (!match || !params?.id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center space-y-4">
+          <div className="text-lg font-semibold text-gray-900">Invalid receipt link</div>
+          <div className="text-sm text-gray-600">The receipt ID is missing from the URL.</div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
